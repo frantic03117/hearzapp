@@ -1,5 +1,5 @@
 const { Schema, model } = require("mongoose");
-const variantSchema = new mongoose.Schema({
+const variantSchema = new Schema({
     sku: { type: String },
     color: { type: String },                   // e.g., Black, White
     connectivity: { type: String },            // e.g., Wired, Bluetooth 5.2
@@ -16,7 +16,7 @@ const variantSchema = new mongoose.Schema({
     discountPrice: { type: Number },           // optional discount
     stock: { type: Number, default: 0 },
     images: [String]                           // array of image URLs for this variant
-});
+}, { _id: true });
 const schema = new Schema({
     slug: {
         type: String
@@ -30,7 +30,7 @@ const schema = new Schema({
     },
     category: [{
         type: Schema.Types.ObjectId,
-        ref: Category,
+        ref: 'Category',
         default: null
     }],
     short_description: {

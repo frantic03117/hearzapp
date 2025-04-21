@@ -66,11 +66,11 @@ exports.createProduct = async (req, res) => {
             const images = filesByVariantIndex[idx] || [];
             return { ...variant, images };
         });
-        const slug = generateUniqueSlug(req.body.title);
+        const slug = await generateUniqueSlug(req.body.title);
         const requestdata = { slug: slug, ...productData };
-        return res.json({ success: 1, message: "Product request", data: requestdata });
-        // const product = new Product(productData);
-        // await product.save();
+        //return res.json({ success: 1, message: "Product request", data: requestdata });
+        const product = new Product(requestdata);
+        await product.save();
         res.status(201).json({ data: product, success: 1, message: "Product created successfully" });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -80,8 +80,22 @@ exports.createProduct = async (req, res) => {
 // Get All Products
 exports.getProducts = async (req, res) => {
     try {
-        const products = await Product.find().populate("category");
-        res.status(200).json(products);
+        const { page = 1, perPage = 10, id, slug } = req.query;
+        const fdata = {};
+        if (id) {
+            fdata['_id'] = id;
+        }
+        if (slug) {
+            fdata['slut'] = slug
+        }
+        const totalDocs = await Product.countDocuments(fdata);
+        const totalPages = Math.ceil(totalDocs / perPage);
+        const skip = (page - 1) * perPage;
+        const products = await Product.find(fdata).populate("category").sort({ createdAt: -1 }).skip(skip).limit(perPage);
+        const pagination = {
+            page, perPage, totalPages, totalDocs
+        }
+        return res.status(200).json({ data: products, success: 1, message: "List of prodct", pagination });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -92,7 +106,7 @@ exports.getProductById = async (req, res) => {
     try {
         const product = await Product.findById(req.params.id).populate("category");
         if (!product) return res.status(404).json({ message: "Product not found" });
-        res.status(200).json(product);
+        res.status(200).json({ data: product, success: 1, message: "List of prodct" });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

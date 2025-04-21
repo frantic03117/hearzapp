@@ -45,6 +45,7 @@ const bookingRoutes = require('./src/routes/BookingRoutes');
 const faqroutes = require('./src/routes/FaqRoutes');
 const agoraRoutes = require('./src/routes/AgoraRoutes');
 const categoryRoutes = require('./src/routes/CategoryRoutes');
+const productroutes = require('./src/routes/ProductRoutes');
 app.use('/api/v1/user', userroutes);
 app.use('/api/v1/doctor', doctorroutes);
 app.use('/api/v1/specialization', specializationroutes);
@@ -56,6 +57,7 @@ app.use('/api/v1/slot', slotroutes);
 app.use('/api/v1/faq', faqroutes);
 app.use('/api/v1/agora', agoraRoutes);
 app.use('/api/v1/category', categoryRoutes);
+app.use('/api/v1/product', productroutes);
 app.get('/', (req, res) => res.send('Hearzapp  Started'))
 // app.listen(port, () => console.log(`Rephrase app listening on port ${port}! http://localhost:7887/`))
 server.listen(port, () => {

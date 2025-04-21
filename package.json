@@ -1,10 +1,10 @@
 {
-  "name": "rephraseapp",
+  "name": "hearzapp",
   "version": "1.0.0",
   "description": "",
-  "main": "rephraseapp.js",
+  "main": "hearzapp.js",
   "scripts": {
-    "start": "nodemon rephraseapp.js"
+    "start": "nodemon hearzapp.js"
   },
   "author": "",
   "license": "ISC",
