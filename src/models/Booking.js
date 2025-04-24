@@ -17,10 +17,6 @@ const bookingSchema = new Schema({
     duration: {
         type: Number
     },
-    slots: [{
-        type: Schema.Types.ObjectId,
-        ref: "Slot"
-    }],
     mode: {
         type: String,
         enum: ['Home', 'Clinic', 'Online'],
@@ -37,7 +33,16 @@ const bookingSchema = new Schema({
     },
     status: {
         type: String
-    }
+    },
+    gateway_order_id: { type: String },
+    gateway_request: {
+        type: Schema.Types.Mixed,
+        default: null
+    },
+    gateway_response: {
+        type: Schema.Types.Mixed,
+        default: null
+    },
 }, { timestamps: true });
 
 module.exports = model('Booking', bookingSchema); // Removed "new"
