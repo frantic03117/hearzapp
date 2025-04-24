@@ -3,7 +3,7 @@ const moment = require("moment-timezone");
 
 exports.create_booking = async (req, res) => {
     const userId = req.user._id;
-    const { doctor_id, booking_date, start_at, end_at, mode } = req.body;
+    const { doctor_id, booking_date, start_at, end_at, mode, language, address } = req.body;
     const start_at_utc = moment.tz(start_at, "Asia/Kolkata").startOf("day").utc().toDate();
     const end_at_utc = moment.tz(end_at, "Asia/Kolkata").startOf("day").utc().toDate();
     const date_utc = moment.tz(booking_date, "Asia/Kolkata").startOf("day").utc().toDate();
@@ -16,6 +16,12 @@ exports.create_booking = async (req, res) => {
         start_at: start_at_utc,
         end_at: end_at_utc,
         status: booked
+    }
+    if (language) {
+        data['language'] = language;
+    }
+    if (address) {
+        data['address'] = address;
     }
     const resp = await Booking.create(data);
     return res.json({ success: 1, data: resp, message: "Booking created successfully" })

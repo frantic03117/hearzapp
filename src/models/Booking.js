@@ -34,6 +34,9 @@ const bookingSchema = new Schema({
     status: {
         type: String
     },
+    address: {
+        type: String,
+    },
     gateway_order_id: { type: String },
     gateway_request: {
         type: Schema.Types.Mixed,
