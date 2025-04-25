@@ -22,6 +22,11 @@ const bookingSchema = new Schema({
         enum: ['Home', 'Clinic', 'Online'],
         default: "Clinic"
     },
+    clinic: {
+        type: Schema.Types.ObjectId,
+        ref: "Clinic",
+        default: null
+    },
     language: {
         type: String
     },
