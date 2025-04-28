@@ -19,6 +19,15 @@ const schema = new Schema({
     address: {
         type: String
     },
+    state: {
+        type: String
+    },
+    city: {
+        type: String
+    },
+    pincode: {
+        type: String
+    },
     doctor: {
         type: Schema.Types.ObjectId,
         ref: User,

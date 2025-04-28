@@ -136,7 +136,6 @@ exports.get_slot = async (req, res) => {
             }
             if (duration == 60 && nextSlot) {
                 const nextStartIST = moment.utc(nextSlot.start_time).tz("Asia/Kolkata");
-
                 // Check if next slot starts immediately after the current slot
                 if (endIST.isSame(nextStartIST) && nextSlot.status == "available") {
                     formattedSlots.push({

@@ -58,7 +58,7 @@ const schema = new Schema({
     },
     role: {
         type: String,
-        enum: ['User', 'Doctor', 'Employee', 'Admin', 'SubAdmin',],
+        enum: ['User', 'Doctor', 'Employee', 'Admin', 'SubAdmin', 'Clinic'],
         default: null
     },
     roles: {
@@ -70,6 +70,11 @@ const schema = new Schema({
         type: String,
         default: null,
         // select: false
+    },
+    clinic: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        default: null
     },
     mode: {
         type: [String]

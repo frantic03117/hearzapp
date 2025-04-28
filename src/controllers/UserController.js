@@ -268,7 +268,10 @@ exports.store_profile = async (req, res) => {
         if (!['Doctor', 'User'].includes(role)) {
             return res.json({ success: 0, message: "Invalid role type", data: null })
         }
-        const slug = await generateUniqueSlug(req.body.name);
+        let slug = await generateUniqueSlug(req.body.name);
+        if (req.body.city) {
+            slug = role + "-" + slug + "-in-" + req.body.city;
+        }
         // if (!req.user) {
         //     const checkIsMobileVerified = await OtpModel.findOne({ mobile: mobile, is_verified: true });
         //     if (!checkIsMobileVerified) {
@@ -287,7 +290,7 @@ exports.store_profile = async (req, res) => {
                 message: "Mobile is already in use"
             })
         }
-        const lastReuest = await User.findOne().sort({ request_id: -1 });
+        const lastReuest = await User.findOne({ role }).sort({ request_id: -1 });
         let new_request_id = 1;
         if (lastReuest) {
             new_request_id = lastReuest.request_id + 1
@@ -295,14 +298,16 @@ exports.store_profile = async (req, res) => {
         const prefix = role == "User" ? 'USER' : 'DOCTOR';
         const data = {
             ...req.body,
-            slug: slug,
+            slug: slug.toLowerCase(),
             request_id: new_request_id,
             custom_request_id: prefix + String(new_request_id).padStart(10, '0'),
             name: name,
-
             mobile: mobile,
             role: role
 
+        }
+        if (role == "Doctor") {
+            data['clinic'] = req.body.clinic;
         }
         if (req.body.email) {
             data['email'] = email.toLowerCase()
@@ -360,6 +365,13 @@ exports.store_profile = async (req, res) => {
 }
 exports.admin_login = async (req, res) => {
     try {
+        // const admindata = {
+        //     "name": "Super Admin",
+        //     "email": "admin@hear.com",
+        //     "password": "Admin@2025#",
+        //     "role": "Admin"
+        // }
+        // await User.findOneAndUpdate({ "email": "admin@hear.com" }, admindata);
         const fields = ['password', 'email'];
         const emptyFields = fields.filter(field => !req.body[field]);
         if (emptyFields.length > 0) {

@@ -1,0 +1,157 @@
+const User = require("../models/User");
+
+async function generateUniqueSlug(name) {
+    const baseSlug = name
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+    let slug = 'clinic-' + baseSlug;
+    let count = 1;
+    const alreadusers = await User.find({ slug });
+    // Check if the slug already exists
+    count = alreadusers.length + 1;
+    if (count > 1) {
+        slug = `${slug}-${count}`;
+    }
+
+
+    return slug;
+}
+
+exports.store_profile = async (req, res) => {
+    try {
+        const fields = ['mobile', 'name'];
+        const emptyFields = fields.filter(field => !req.body[field]);
+        if (emptyFields.length > 0) {
+            return res.json({ success: 0, message: 'The following fields are required:' + emptyFields.join(','), fields: emptyFields });
+        }
+        const { name, email, mobile } = req.body;
+
+        let slug = await generateUniqueSlug(req.body.name);
+        if (req.body.city) {
+            slug = slug + "-in-" + req.body.city
+        }
+        // if (!req.user) {
+        //     const checkIsMobileVerified = await OtpModel.findOne({ mobile: mobile, is_verified: true });
+        //     if (!checkIsMobileVerified) {
+        //         return res.json({ success: 0, message: "Mobile number is not verified" });
+        //     }
+        // }
+        const isMobileExists = await User.findOne({ mobile: mobile });
+        if (mobile.toString().length != 10) {
+            return res.json({ success: 0, message: "Mobile is not valid" })
+        }
+        if (isMobileExists) {
+            return res.json({
+                errors: [{ 'message': "Mobile is already in use" }],
+                success: 0,
+                data: [],
+                message: "Mobile is already in use"
+            })
+        }
+        const lastReuest = await User.findOne({ role: "Clinic" }).sort({ request_id: -1 });
+        let new_request_id = 1;
+        if (lastReuest) {
+            new_request_id = lastReuest.request_id + 1
+        }
+        const prefix = 'CLINIC';
+        const data = {
+            ...req.body,
+            slug: slug.toLowerCase(),
+            request_id: new_request_id,
+            custom_request_id: prefix + String(new_request_id).padStart(10, '0'),
+            name: name,
+            is_verified: true,
+            mobile: mobile,
+            role: "Clinic"
+
+        }
+        if (req.body.email) {
+            data['email'] = email.toLowerCase()
+        }
+
+        if (req.files.image) {
+            data['profile_image'] = req.files.image[0].path
+        }
+        if (req.files.registration_certificate) {
+            data['registration_certificate'] = req.files.registration_certificate[0].path
+        }
+        if (req.files.graduation_certificate) {
+            data['graduation_certificate'] = req.files.graduation_certificate[0].path
+        }
+        if (req.files.post_graduation_certificate) {
+            data['post_graduation_certificate'] = req.files.post_graduation_certificate[0].path
+        }
+        if (req.files.mci_certificate) {
+            data['mci_certificate'] = req.files.mci_certificate[0].path
+        }
+        if (req.files.aadhaar_front) {
+            data['aadhaar_front'] = req.files.aadhaar_front[0].path
+        }
+        if (req.files.aadhaar_back) {
+            data['aadhaar_back'] = req.files.aadhaar_back[0].path
+        }
+        if (req.files.pan_image) {
+            data['pan_image'] = req.files.pan_image[0].path
+        }
+        const resp = await User.create(data);
+        const tokenuser = {
+            _id: resp._id,
+        }
+
+        // const token = jwt.sign({ user: tokenuser }, SECRET_KEY, { expiresIn: "1 days" })
+
+        return res.json({ success: 1, message: "Clinic created successfully", data: resp })
+
+
+    } catch (err) {
+        return res.json({
+            errors: [{ 'message': err.message }],
+            success: 0,
+
+            data: [],
+            message: err.message
+        })
+    }
+}
+exports.get_clinics = async (req, res) => {
+    try {
+        const { page = 1, perPage = 10 } = req.query;
+        const fdata = {
+            role: "Clinic"
+        }
+        const totalDocs = await User.countDocuments(fdata);
+        const totalPages = Math.ceil(totalDocs / perPage);
+        const skip = (page - 1) * perPage;
+        const result = await User.aggregate([
+            {
+                $match: fdata
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "_id",
+                    foreignField: "clinic",
+                    as: "doctors",
+                    pipeline: [
+                        {
+                            $project: {
+                                name: 1,
+                                email: 1,
+                                mobile: 1,
+                                profile_image: 1
+                            }
+                        }
+                    ]
+                }
+            }
+        ]);
+        return res.json({ success: 1, data: result, message: "List of clinics" });
+
+    } catch (err) {
+        return res.json({ success: 0, message: err.message, data: false })
+    }
+}
