@@ -1,11 +1,6 @@
 const { Schema, model } = require("mongoose");
 
 const bookingSchema = new Schema({
-    doctor: {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-        index: true
-    },
     user: {
         type: Schema.Types.ObjectId,
         ref: "User",
@@ -51,6 +46,10 @@ const bookingSchema = new Schema({
         type: Schema.Types.Mixed,
         default: null
     },
+    payment_status: {
+        type: String,
+        default: "Pending"
+    }
 }, { timestamps: true });
 
 module.exports = model('Booking', bookingSchema); // Removed "new"

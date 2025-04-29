@@ -1,20 +1,23 @@
 const mongoose = require("mongoose");
 
 const slotSchema = new mongoose.Schema({
-    doctor: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    doctor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    weekdayName: { type: String },
     date: { type: Date },
     clinic: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Clinic"
+        ref: "User"
     },
-    start_time: { type: Date },
-    end_time: { type: Date },
+    start_time: { type: String },
+    end_time: { type: String },
     status: { type: String, enum: ["available", "booked", "blocked"], default: "available" },
-    block_type: { type: String, default: null },
-    block_at: { type: Date, default: null },
+    isHoliday: {
+        type: Boolean,
+        default: false
+    },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
-});
+}, { timestamps: true });
 
 const Slot = mongoose.model("Slot", slotSchema);
 

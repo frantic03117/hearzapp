@@ -32,7 +32,7 @@ exports.send_otp = async (req, res) => {
         }
         const checkmobile = await User.findOne({ mobile: mobile });
         if (checkmobile) {
-            if (['Employee', 'Admin'].includes(checkmobile.role)) {
+            if (['Admin', 'Clinic'].includes(checkmobile.role)) {
                 return res.json({
                     errors: [{ 'message': 'Otp login  available to Users only' }],
                     success: 0,
@@ -123,21 +123,21 @@ exports.update_profile = async (req, res) => {
         if (emptyFields.length > 0) {
             return res.json({ success: 0, message: 'The following fields are required:' + emptyFields.join(','), fields: emptyFields });
         }
-        // const { mobile } = req.body;
+        const { mobile } = req.body;
 
-        // const isMobileExists = await User.findOne({ mobile: mobile, _id: { $ne: id } });
-        // if (mobile.toString().length != 10) {
-        //     return res.json({ success: 0, message: "Mobile is not valid" })
-        // }
+        const isMobileExists = await User.findOne({ mobile: mobile, _id: { $ne: id } });
+        if (mobile.toString().length != 10) {
+            return res.json({ success: 0, message: "Mobile is not valid" })
+        }
 
-        // if (isMobileExists) {
-        //     return res.json({
-        //         errors: [{ 'message': "Mobile is already in use" }],
-        //         success: 0,
-        //         data: [],
-        //         message: "Mobile is already in use"
-        //     })
-        // }
+        if (isMobileExists) {
+            return res.json({
+                errors: [{ 'message': "Mobile is already in use" }],
+                success: 0,
+                data: [],
+                message: "Mobile is already in use"
+            })
+        }
 
 
 
@@ -145,33 +145,33 @@ exports.update_profile = async (req, res) => {
             ...req.body
         }
 
-        if (req.files.profile_image) {
+        if (req.files?.profile_image) {
             data['profile_image'] = req.files.profile_image[0].path
         }
-        if (req.files.registration_certificate) {
+        if (req.files?.registration_certificate) {
             data['registration_certificate'] = req.files.registration_certificate[0].path
         }
-        if (req.files.graduation_certificate) {
+        if (req.files?.graduation_certificate) {
             data['graduation_certificate'] = req.files.graduation_certificate[0].path
         }
-        if (req.files.post_graduation_certificate) {
+        if (req.files?.post_graduation_certificate) {
             data['post_graduation_certificate'] = req.files.post_graduation_certificate[0].path
         }
-        if (req.files.mci_certificate) {
+        if (req.files?.mci_certificate) {
             data['mci_certificate'] = req.files.mci_certificate[0].path
         }
-        if (req.files.aadhaar_front) {
+        if (req.files?.aadhaar_front) {
             data['aadhaar_front'] = req.files.aadhaar_front[0].path
         }
-        if (req.files.aadhaar_back) {
+        if (req.files?.aadhaar_back) {
             data['aadhaar_back'] = req.files.aadhaar_back[0].path
         }
-        if (req.files.pan_image) {
+        if (req.files?.pan_image) {
             data['pan_image'] = req.files.pan_image[0].path
         }
 
 
-        const userdata = await User.findOneAndUpdate({ _id: id }, { $set: data });
+        const userdata = await User.findOneAndUpdate({ _id: id }, { $set: data }, { new: true });
         // const tokenuser = {
         //     _id: userdata._id,
         // }
@@ -259,12 +259,12 @@ exports.user_list = async (req, res) => {
 }
 exports.store_profile = async (req, res) => {
     try {
-        const fields = ['mobile', 'name', 'role'];
+        const fields = ['mobile', 'name'];
         const emptyFields = fields.filter(field => !req.body[field]);
         if (emptyFields.length > 0) {
             return res.json({ success: 0, message: 'The following fields are required:' + emptyFields.join(','), fields: emptyFields });
         }
-        const { name, email, mobile, role } = req.body;
+        const { name, email, mobile, role = "User" } = req.body;
         if (!['Doctor', 'User'].includes(role)) {
             return res.json({ success: 0, message: "Invalid role type", data: null })
         }
@@ -304,7 +304,6 @@ exports.store_profile = async (req, res) => {
             name: name,
             mobile: mobile,
             role: role
-
         }
         if (role == "Doctor") {
             data['clinic'] = req.body.clinic;
@@ -312,30 +311,31 @@ exports.store_profile = async (req, res) => {
         if (req.body.email) {
             data['email'] = email.toLowerCase()
         }
-
-        if (req.files.image) {
-            data['profile_image'] = req.files.image[0].path
-        }
-        if (req.files.registration_certificate) {
-            data['registration_certificate'] = req.files.registration_certificate[0].path
-        }
-        if (req.files.graduation_certificate) {
-            data['graduation_certificate'] = req.files.graduation_certificate[0].path
-        }
-        if (req.files.post_graduation_certificate) {
-            data['post_graduation_certificate'] = req.files.post_graduation_certificate[0].path
-        }
-        if (req.files.mci_certificate) {
-            data['mci_certificate'] = req.files.mci_certificate[0].path
-        }
-        if (req.files.aadhaar_front) {
-            data['aadhaar_front'] = req.files.aadhaar_front[0].path
-        }
-        if (req.files.aadhaar_back) {
-            data['aadhaar_back'] = req.files.aadhaar_back[0].path
-        }
-        if (req.files.pan_image) {
-            data['pan_image'] = req.files.pan_image[0].path
+        if (req.files) {
+            if (req.files?.profile_image) {
+                data['profile_image'] = req.files.profile_image[0].path
+            }
+            if (req.files?.registration_certificate) {
+                data['registration_certificate'] = req.files.registration_certificate[0].path
+            }
+            if (req.files?.graduation_certificate) {
+                data['graduation_certificate'] = req.files.graduation_certificate[0].path
+            }
+            if (req.files?.post_graduation_certificate) {
+                data['post_graduation_certificate'] = req.files.post_graduation_certificate[0].path
+            }
+            if (req.files?.mci_certificate) {
+                data['mci_certificate'] = req.files.mci_certificate[0].path
+            }
+            if (req.files?.aadhaar_front) {
+                data['aadhaar_front'] = req.files.aadhaar_front[0].path
+            }
+            if (req.files?.aadhaar_back) {
+                data['aadhaar_back'] = req.files.aadhaar_back[0].path
+            }
+            if (req.files?.pan_image) {
+                data['pan_image'] = req.files.pan_image[0].path
+            }
         }
         const resp = await User.create(data);
         const tokenuser = {

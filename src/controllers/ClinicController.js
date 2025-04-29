@@ -1,4 +1,6 @@
 const User = require("../models/User");
+const SECRET_KEY = process.env.SECRET_KEY;
+const jwt = require('jsonwebtoken');
 
 async function generateUniqueSlug(name) {
     const baseSlug = name
@@ -153,5 +155,31 @@ exports.get_clinics = async (req, res) => {
 
     } catch (err) {
         return res.json({ success: 0, message: err.message, data: false })
+    }
+}
+exports.clinic_login = async (req, res) => {
+    try {
+        const fields = ['password', 'email'];
+        const emptyFields = fields.filter(field => !req.body[field]);
+        if (emptyFields.length > 0) {
+            return res.json({ success: 0, message: 'The following fields are required:' + emptyFields.join(','), fields: emptyFields });
+        }
+        const { email, password } = req.body;
+        const fdata = {
+            email: email,
+            password: password,
+            role: "Clinic"
+        }
+        const userfind = await User.findOne(fdata);
+        if (!userfind) {
+            return res.json({ success: 0, message: "Invalid credentials", data: null });
+        }
+        const tokenuser = {
+            _id: userfind._id,
+        }
+        const token = userfind ? jwt.sign({ user: tokenuser }, SECRET_KEY, { expiresIn: "30 days" }) : ""
+        return res.json({ success: 1, message: 'Login successfully', data: token });
+    } catch (err) {
+        return res.json({ success: 0, message: err.message });
     }
 }

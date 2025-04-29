@@ -5,5 +5,4 @@ const { Auth } = require("../middleware/Auth");
 const router = Router();
 router.post('/', Auth, create_booking);
 router.get('/', Auth, get_booking);
-
 module.exports = router;
