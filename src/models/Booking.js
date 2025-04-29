@@ -19,7 +19,7 @@ const bookingSchema = new Schema({
     },
     clinic: {
         type: Schema.Types.ObjectId,
-        ref: "Clinic",
+        ref: "User",
         default: null
     },
     language: {

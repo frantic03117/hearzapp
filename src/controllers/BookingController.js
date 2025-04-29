@@ -70,42 +70,43 @@ exports.create_booking = async (req, res) => {
 }
 
 exports.get_booking = async (req, res) => {
-    const userId = req.user._id;
-    const role = req.user.role;
-    const { date, page = 1, perPage = 10 } = req.query;
-    const fdata = {}
-    if (role == "User") {
-        fdata['user'] = userId
+    try {
+
+
+        const userId = req.user._id;
+        const role = req.user.role;
+        const { date, page = 1, perPage = 10 } = req.query;
+        const fdata = {}
+        if (role == "User") {
+            fdata['user'] = userId
+        }
+        if (role == "Clinic") {
+            fdata['clinic'] = userId
+        }
+        if (date) {
+            fdata["date"] = moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate();
+        }
+        const totalDocs = await Booking.countDocuments(fdata);
+        const totalPages = Math.ceil(totalDocs / perPage);
+        const skip = (page - 1) * perPage;
+        let bookings = await Booking.find(fdata).populate({
+            path: 'clinic',
+            select: 'custom_request_id name mobile  address role profile_image'
+        }).populate({
+            path: "user",
+            select: 'custom_request_id name mobile gender dob address role profile_image'
+        }).sort({ booking_date: -1 }).skip(skip).limit(perPage).lean();
+        bookings = bookings.map(booking => ({
+            ...booking,
+            start_at: moment.utc(booking.start_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
+            end_at: moment.utc(booking.end_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
+            booking_date: moment.utc(booking.date).tz("Asia/Kolkata").format("YYYY-MM-DD")
+        }));
+        const pagination = { perPage, page, totalPages, totalDocs };
+        return res.json({ success: 1, message: "List of bookings", data: bookings, pagination });
+    } catch (err) {
+        const stiackLink = err.stack?.split("\n")[1]?.trim();
+        return res.json({ success: 0, message: err.message, stackLine: stiackLink })
     }
-    if (role == "Clinic") {
-        fdata['clinic'] = userId
-    }
-    if (date) {
-        fdata["date"] = moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate();
-    }
-    const totalDocs = await Booking.countDocuments(fdata);
-    const totalPages = Math.ceil(totalDocs / perPage);
-    const skip = (page - 1) * perPage;
-    let bookings = await Booking.find(fdata).populate({
-        path: 'doctor',
-        select: 'custom_request_id name mobile gender dob address role profile_image profession'
-    }).populate({
-        path: "user",
-        select: 'custom_request_id name mobile gender dob address role profile_image'
-    }).populate({
-        path: 'slots',
-        select: 'date start_time end_time status'
-    }).sort({ booking_date: -1 }).skip(skip).limit(perPage).lean();
-    bookings = bookings.map(booking => ({
-        ...booking,
-        booking_date: booking.booking_date,
-        slots: booking.slots.map(slot => ({
-            ...slot,
-            start_time: moment.utc(slot.start_time).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
-            end_time: moment.utc(slot.end_time).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
-            date: moment.utc(slot.date).tz("Asia/Kolkata").format("YYYY-MM-DD")
-        }))
-    }));
-    const pagination = { perPage, page, totalPages, totalDocs };
-    return res.json({ success: 1, message: "List of bookings", data: bookings, pagination });
 }
+
