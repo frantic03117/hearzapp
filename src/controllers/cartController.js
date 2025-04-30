@@ -12,11 +12,15 @@ exports.addToCart = async (req, res) => {
         let cartItem = await Cart.findOne({ product: productId, variant: variantId, user: userId, cart_status: "Cart" });
         if (cartItem) {
             cartItem.quantity += quantity;
+            cartItem.is_ordered = "Pending";
+            cartItem.unit_price = findproduct.variants.find(obj => obj._id == variantId)?.price ?? 100
         } else {
             cartItem = new Cart({
                 product: productId,
                 variant: variantId,
                 quantity,
+                is_ordered: "Pending",
+                unit_price: findproduct.variants.find(obj => obj._id == variantId)?.price ?? 100,
                 cart_status: "Cart",
                 user: userId
             });
@@ -57,15 +61,24 @@ exports.getCartItems = async (req, res) => {
 // Update quantity
 exports.updateCartItem = async (req, res) => {
     try {
-        const { cartItemId, quantity } = req.body;
+        const { id } = req.params;
 
-        const cartItem = await Cart.findById(cartItemId);
-        if (!cartItem) return res.status(404).json({ message: "Cart item not found" });
+        const { quantity } = req.body;
+        if (quantity > 0) {
+            const cartItem = await Cart.findOne({ _id: id });
+            if (cartItem.is_ordered != "Pending") {
+                return res.json({ success: 0, message: "Please enter valid cart id" });
+            }
+            if (!cartItem) return res.status(404).json({ message: "Cart item not found" });
+            cartItem.quantity = quantity;
+            cartItem.is_ordered = "Pending";
+            await cartItem.save();
+            return res.status(200).json({ data: cartItem, success: 1, message: "Cart updated" });
+        } else {
+            await Cart.deleteOne({ _id: id });
+            return res.status(200).json({ data: null, success: 1, message: "Cart deleted" });
+        }
 
-        cartItem.quantity = quantity;
-        await cartItem.save();
-
-        res.status(200).json(cartItem);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

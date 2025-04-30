@@ -18,7 +18,7 @@ exports.get_all_promocodes = async (req, res) => {
     if (code) {
         fdata['code'] = code
     }
-    const skip = (page - 1) * perpage;
+    const skip = (page - 1) * perPage;
 
     const resp = await PromoCode.find(fdata).sort({ createdAt: -1 }).skip(skip).limit(perPage);
     return res.json({ success: 1, message: "All promo codes", data: resp })

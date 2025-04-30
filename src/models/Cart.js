@@ -13,6 +13,9 @@ const cartItemSchema = new Schema({
         default: 1,
         min: 1
     },
+    unit_price: {
+        type: Number
+    },
     user: {
         type: Schema.Types.ObjectId,
         ref: 'User'
@@ -21,6 +24,11 @@ const cartItemSchema = new Schema({
         type: String,
         enum: ['Cart', 'Order', 'Wishlist'],
         default: "Cart"
+    },
+    is_ordered: {
+        type: String,
+        enum: ['Pending', 'Ordered', 'Cancelled'],
+        default: "Pending"
     }
 }, { timestamps: true });
 

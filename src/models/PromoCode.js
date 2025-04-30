@@ -4,14 +4,21 @@ const schema = new Schema({
     code: {
         type: String
     },
+    code_for: {
+        type: String,
+        enum: ['Product', 'Service'],
+        default: 'Product'
+    },
     short_description: {
         type: String
     },
     minimum_order: {
-        type: Number
+        type: Number,
+        default: 0
     },
     discount: {
-        type: Number
+        type: Number,
+        default: 0,
     },
     discount_type: {
         type: String,
