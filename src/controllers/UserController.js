@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const OtpModel = require("../models/Otp");
 const DoctorSpecialization = require("../models/DoctorSpecialization");
-const SECRET_KEY = process.env.SECRET_KEY;
+const SECRET_KEY = process.env.SECRET_KEY ?? "frantic@hearzapp#6887";
 const jwt = require('jsonwebtoken');
 async function generateUniqueSlug(name) {
     const baseSlug = name
