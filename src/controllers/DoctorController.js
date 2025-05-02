@@ -30,7 +30,7 @@ exports.get_specility = async (req, res) => {
     return res.json({ success: 1, message: "List of specilities", data: resps });
 }
 exports.getDoctorWithSpecialization = async (req, res) => {
-    const { url, id, languages = [], specility = [], mode = [], page = 1, perPage = 10 } = req.query;
+    const { url, id, clinic, languages = [], specility = [], mode = [], page = 1, perPage = 10 } = req.query;
 
 
     try {
@@ -40,6 +40,9 @@ exports.getDoctorWithSpecialization = async (req, res) => {
 
         const fdata = {
             "role": "Doctor"
+        }
+        if (clinic) {
+            fdata['clinic'] = clinic
         }
         if (languagesArr.length) {
             fdata['languages'] = { $in: languagesArr };
@@ -69,132 +72,7 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         const skip = (page - 1) * perPage;
 
 
-        const doctors = await User.aggregate([
-            {
-                $match: fdata
-            },
-            {
-                $lookup: {
-                    from: "doctorspecializations",
-                    localField: "_id",
-                    foreignField: "doctor",
-                    as: "specializations",
-                }
-            },
-            {
-                $lookup: {
-                    from: "specializations",
-                    localField: "specializations.specialization",
-                    foreignField: "_id",
-                    as: "specializationDetails",
-
-                }
-            },
-
-            {
-                $lookup: {
-                    from: "slots",
-                    localField: "_id",
-                    foreignField: "doctor",
-                    as: "slots",
-                    pipeline: [
-                        {
-                            $match: { start_time: { $gte: new Date() } }
-                        },
-                        { $limit: 2 }
-                    ]
-                }
-            },
-
-
-            {
-                $project: {
-                    _id: 1, // Including _id field
-                    request_id: 1,
-                    custom_request_id: 1,
-                    profile_image: 1,
-                    slug: 1,
-                    name: 1,
-                    email: 1,
-                    mobile: 1,
-                    gender: 1,
-                    dob: 1,
-                    profession: 1,
-                    marital_status: 1,
-                    address: 1,
-                    about_yourself: 1,
-                    refer_by: 1,
-                    ref_code: 1,
-                    role: 1,
-                    roles: 1,
-                    mci_number: 1,
-                    coordinates: 1,
-                    languages: 1,
-                    mode: 1,
-                    state: 1,
-                    city: 1,
-                    pincode: 1,
-                    slots: {
-                        $map: {
-                            input: "$slots",
-                            as: "slot",
-                            in: {
-                                _id: "$$slot._id",
-                                doctor: "$$slot.doctor",
-                                status: "$$slot.status",
-                                // Include other fields if needed...
-
-                                start_time: {
-                                    $dateToString: {
-                                        format: "%Y-%m-%d %H:%M:%S",
-                                        date: "$$slot.start_time",
-                                        timezone: "Asia/Kolkata"
-                                    }
-                                },
-                                end_time: {
-                                    $dateToString: {
-                                        format: "%Y-%m-%d %H:%M:%S",
-                                        date: "$$slot.end_time",
-                                        timezone: "Asia/Kolkata"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    registration_certificate: 1,
-                    graduation_certificate: 1,
-                    post_graduation_certificate: 1,
-                    mci_certificate: 1,
-                    aadhaar_front: 1,
-                    aadhaar_back: 1,
-                    pan_image: 1,
-                    fcm_token: 1,
-                    is_deleted: 1,
-                    jwt_token: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    specializationDetails: { title: 1, _id: 1 }
-                }
-            },
-            {
-                $addFields: {
-                    nearestSlotTime: {
-                        $cond: [
-                            { $gt: [{ $size: "$slots" }, 0] },
-                            { $min: "$slots.start_time" },
-                            null
-                        ]
-                    }
-                }
-            },
-            {
-                $sort: {
-                    nearestSlotTime: 1
-                }
-            },
-            { $skip: skip },
-            { $limit: perPage },
-        ]);
+        const doctors = await User.find(fdata).populate('clinic').sort({ createdAt: -1 }).skip(skip).limit(perPage);
         const pagination = { perPage, page, totalPages, totalDocs }
         return res.json({ success: 1, message: "List of doctors", data: doctors, pagination })
     } catch (error) {

@@ -86,7 +86,7 @@ exports.getProducts = async (req, res) => {
             fdata['_id'] = id;
         }
         if (slug) {
-            fdata['slut'] = slug
+            fdata['slug'] = slug
         }
         const totalDocs = await Product.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
