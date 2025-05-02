@@ -399,10 +399,5 @@ exports.admin_login = async (req, res) => {
 exports.my_profile = async (req, res) => {
     const user_id = req.user._id;
     const userfind = await User.findOne({ _id: user_id });
-    const specialization = await DoctorSpecialization.find({ doctor: user_id }).populate('specialization');
-    const data = {
-        ...userfind.toObject(),
-        specialization: specialization
-    }
-    return res.json({ data: data, success: 1, message: "Profile" })
+    return res.json({ data: userfind, success: 1, message: "Profile" })
 }

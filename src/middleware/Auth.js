@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const SECRET_KEY = process.env.SECRET_KEY;
+const SECRET_KEY = process.env.SECRET_KEY ?? "frantic@hearzapp#6887";
 async function Auth(req, res, next) {
     const authorization = req.headers.authorization;
     if (!authorization) {
