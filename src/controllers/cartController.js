@@ -26,7 +26,7 @@ exports.addToCart = async (req, res) => {
             });
         }
         await cartItem.save();
-        res.status(200).json(cartItem);
+        res.status(200).json({ data: cartItem, success: 1, message: "Add to cart successfully" });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -62,7 +62,6 @@ exports.getCartItems = async (req, res) => {
 exports.updateCartItem = async (req, res) => {
     try {
         const { id } = req.params;
-
         const { quantity } = req.body;
         if (quantity > 0) {
             const cartItem = await Cart.findOne({ _id: id });
