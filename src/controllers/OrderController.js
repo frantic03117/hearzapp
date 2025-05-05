@@ -74,3 +74,25 @@ exports.apply_promocode = async (req, res) => {
         return res.json({ success: 0, message: err.message, stackLine })
     }
 }
+exports.get_orders = async (req, res) => {
+    try {
+        const { page = 1, perPage = 10, id, slug } = req.query;
+        const fdata = {};
+        if (id) {
+            fdata['_id'] = id;
+        }
+        if (req.user.role == "User") {
+            fdata['user'] = req.user._id
+        }
+        const totalDocs = await Order.countDocuments(fdata);
+        const totalPages = Math.ceil(totalDocs / perPage);
+        const skip = (page - 1) * perPage;
+        const pagination = {
+            page, perPage, totalPages, totalDocs
+        }
+        const resp = await Order.find(fdata).sort({ createdAt: -1 }).skip(skip).limit(perPage);
+        return res.json({ success: 1, message: "List of orders", data: resp, pagination })
+    } catch (err) {
+        return res.json({ success: 0, message: err.message })
+    }
+}

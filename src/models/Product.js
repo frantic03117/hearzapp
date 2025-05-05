@@ -1,7 +1,10 @@
 const { Schema, model } = require("mongoose");
 const variantSchema = new Schema({
     sku: { type: String },
-    color: { type: String },                   // e.g., Black, White
+    color: { type: String },   // e.g., Black, White
+    ha_style: {
+        type: String
+    },            // e.g.,BTE, RIC, CIC, IIC
     connectivity: { type: String },            // e.g., Wired, Bluetooth 5.2
     batteryLife: { type: String },             // e.g., "8 hours", "30 hours with case"
     chargingType: { type: String },            // e.g., USB-C, Micro-USB, Wireless

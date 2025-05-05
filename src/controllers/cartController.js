@@ -35,22 +35,18 @@ exports.addToCart = async (req, res) => {
 exports.getCartItems = async (req, res) => {
     try {
         const userId = req.user._id;
-        const cartItems = await Cart.find({ user: userId }).lean(); // use .lean() for easier object manipulation
-
-        // Fetch and attach exact variant info
+        const cartItems = await Cart.find({ user: userId }).lean();
         const enrichedCartItems = await Promise.all(cartItems.map(async (item) => {
             const product = await Product.findById(item.product).lean();
             const variant = product.variants.find(v => v._id.toString() === item.variant.toString());
-
             return {
                 ...item,
                 product: {
                     ...product,
-                    variants: [variant] // include only the matched variant
+                    variants: [variant]
                 }
             };
         }));
-
         res.status(200).json({ data: enrichedCartItems, success: 1, message: "List of cart items" });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -77,7 +73,6 @@ exports.updateCartItem = async (req, res) => {
             await Cart.deleteOne({ _id: id });
             return res.status(200).json({ data: null, success: 1, message: "Cart deleted" });
         }
-
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
