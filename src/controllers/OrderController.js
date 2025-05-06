@@ -90,8 +90,38 @@ exports.get_orders = async (req, res) => {
         const pagination = {
             page, perPage, totalPages, totalDocs
         }
-        const resp = await Order.find(fdata).sort({ createdAt: -1 }).skip(skip).limit(perPage);
-        return res.json({ success: 1, message: "List of orders", data: resp, pagination })
+        const orders = await Order.find(fdata)
+            .populate({
+                path: "cartids",
+                populate: {
+                    path: "product"
+                }
+            })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(perPage);
+
+        // Post-process to extract matching variant manually
+        const processedOrders = orders.map(order => {
+            const cartItems = order.cartids.map(cart => {
+                const product = cart.product;
+                const variant = product?.variants?.find(v => v._id.toString() === cart.variant.toString());
+
+                return {
+                    ...cart.toObject(),
+                    product,
+                    variant
+                };
+            });
+
+            return {
+                ...order.toObject(),
+                cartids: cartItems
+            };
+        });
+
+        return res.json({ success: 1, message: "List of orders", data: processedOrders, pagination });
+
     } catch (err) {
         return res.json({ success: 0, message: err.message })
     }
