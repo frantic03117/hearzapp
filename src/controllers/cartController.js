@@ -3,13 +3,15 @@ const Product = require('../models/Product');
 // Add item to cart
 exports.addToCart = async (req, res) => {
     try {
-        const { productId, variantId, quantity = 1 } = req.body;
+        const { productId, variantId, quantity = 1, cart_status = "Cart" } = req.body;
         const userId = req.user._id;
+
         const findproduct = await Product.findById(productId);
         if (!findproduct) return res.status(404).json({ message: "Product not found" });
         const variant = findproduct.variants.id(variantId);
         if (!variant) return res.status(404).json({ message: "Variant not found" });
-        let cartItem = await Cart.findOne({ product: productId, variant: variantId, user: userId, cart_status: "Cart" });
+        let cartItem = await Cart.findOne({ product: productId, variant: variantId, user: userId, cart_status: cart_status });
+
         if (cartItem) {
             cartItem.quantity += quantity;
             cartItem.is_ordered = "Pending";
