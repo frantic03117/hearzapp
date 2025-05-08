@@ -1,3 +1,4 @@
+const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 async function generateUniqueSlug(name) {
     const baseSlug = name
@@ -92,10 +93,16 @@ exports.getProducts = async (req, res) => {
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
         const products = await Product.find(fdata).populate("category").sort({ createdAt: -1 }).skip(skip).limit(perPage);
+        const wishlited = await Cart.find({ user: req.user._id, cart_status: "Cart" });
+        const wishpids = wishlited.map(itm => itm.product.toString());
+        const productsWithWishlist = products.map(product => ({
+            ...product,
+            is_wishlist: wishpids.includes(product._id.toString())
+        }));
         const pagination = {
             page, perPage, totalPages, totalDocs
         }
-        return res.status(200).json({ data: products, success: 1, message: "List of prodct", pagination });
+        return res.status(200).json({ data: productsWithWishlist, success: 1, message: "List of prodct", pagination });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

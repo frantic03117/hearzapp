@@ -21,7 +21,7 @@ exports.addToCart = async (req, res) => {
                 quantity,
                 is_ordered: "Pending",
                 unit_price: findproduct.variants.find(obj => obj._id == variantId)?.price ?? 100,
-                cart_status: "Cart",
+                cart_status: req.body.cart_status ?? "Cart",
                 user: userId
             });
         }
@@ -34,8 +34,25 @@ exports.addToCart = async (req, res) => {
 
 exports.getCartItems = async (req, res) => {
     try {
-        const userId = req.user._id;
-        const cartItems = await Cart.find({ user: userId }).lean();
+        const { page = 1, perPage = 10, cart_status, user, is_ordered } = req.body;
+        const fdata = {}
+        if (req.user.role == "User") {
+            fdata['user'] = req.user._id
+        }
+        if (cart_status) {
+            fdata['cart_status'] = cart_status
+        }
+        if (user) {
+            fdata['user'] = user
+        }
+        if (is_ordered) {
+            fdata['is_ordered'] = is_ordered
+        }
+        const skip = (page - 1) * perPage;
+        const totalDocs = await Cart.countDocuments(fdata);
+        const totalPages = Math.ceil(totalDocs / perPage);
+        const pagination = { page, totalDocs, totalPages, perPage };
+        const cartItems = await Cart.find(fdata).sort({ createdAt: -1 }).skip(skip).limit(perPage).lean();
         const enrichedCartItems = await Promise.all(cartItems.map(async (item) => {
             const product = await Product.findById(item.product).lean();
             const variant = product.variants.find(v => v._id.toString() === item.variant.toString());
@@ -47,7 +64,7 @@ exports.getCartItems = async (req, res) => {
                 }
             };
         }));
-        res.status(200).json({ data: enrichedCartItems, success: 1, message: "List of cart items" });
+        res.status(200).json({ data: enrichedCartItems, pagination, success: 1, message: "List of items" });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
