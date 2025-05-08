@@ -93,7 +93,7 @@ exports.getProducts = async (req, res) => {
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
         const products = await Product.find(fdata).populate("category").sort({ createdAt: -1 }).skip(skip).limit(perPage).lean();
-        const wishlited = await Cart.find({ user: req.user._id, cart_status: "Cart" });
+        const wishlited = await Cart.find({ user: req.user._id, cart_status: "Wishlist" });
         const wishpids = wishlited.map(itm => itm.product.toString());
         const productsWithWishlist = products.map(product => ({
             ...product,
