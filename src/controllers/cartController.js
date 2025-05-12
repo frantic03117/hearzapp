@@ -11,7 +11,6 @@ exports.addToCart = async (req, res) => {
         const variant = findproduct.variants.id(variantId);
         if (!variant) return res.status(404).json({ message: "Variant not found" });
         let cartItem = await Cart.findOne({ product: productId, variant: variantId, user: userId, cart_status: cart_status });
-
         if (cartItem) {
             if (cart_status == "Wishlist") {
                 await Cart.deleteOne({ _id: cartItem._id });

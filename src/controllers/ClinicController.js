@@ -30,7 +30,7 @@ exports.store_profile = async (req, res) => {
         if (emptyFields.length > 0) {
             return res.json({ success: 0, message: 'The following fields are required:' + emptyFields.join(','), fields: emptyFields });
         }
-        const { name, email, mobile } = req.body;
+        const { name, email, mobile, id } = req.body;
 
         let slug = await generateUniqueSlug(req.body.name);
         if (req.body.city) {
@@ -42,7 +42,11 @@ exports.store_profile = async (req, res) => {
         //         return res.json({ success: 0, message: "Mobile number is not verified" });
         //     }
         // }
-        const isMobileExists = await User.findOne({ mobile: mobile });
+        const mobilefien = { mobile: mobile };
+        if (id) {
+            mobilefien['_id'] = { $ne: id }
+        }
+        const isMobileExists = await User.findOne(mobilefien);
         if (mobile.toString().length != 10) {
             return res.json({ success: 0, message: "Mobile is not valid" })
         }
@@ -75,8 +79,8 @@ exports.store_profile = async (req, res) => {
             data['email'] = email.toLowerCase()
         }
 
-        if (req.files.image) {
-            data['profile_image'] = req.files.image[0].path
+        if (req.files.profile_image) {
+            data['profile_image'] = req.files.profile_image[0].path
         }
         if (req.files.registration_certificate) {
             data['registration_certificate'] = req.files.registration_certificate[0].path
@@ -99,14 +103,17 @@ exports.store_profile = async (req, res) => {
         if (req.files.pan_image) {
             data['pan_image'] = req.files.pan_image[0].path
         }
-        const resp = await User.create(data);
-        const tokenuser = {
-            _id: resp._id,
+        let resp;
+        if (id) {
+            resp = await User.findOneAndUpdate({ _id: id }, { $set: data }, { new: true });
+        } else {
+            resp = await User.create(data);
         }
+
 
         // const token = jwt.sign({ user: tokenuser }, SECRET_KEY, { expiresIn: "1 days" })
 
-        return res.json({ success: 1, message: "Clinic created successfully", data: resp })
+        return res.json({ success: 1, message: `Clinic ${id ? 'updated' : 'created'} successfully`, data: resp })
 
 
     } catch (err) {
@@ -119,11 +126,24 @@ exports.store_profile = async (req, res) => {
         })
     }
 }
+
 exports.get_clinics = async (req, res) => {
     try {
-        const { page = 1, perPage = 10 } = req.query;
+        const { page = 1, perPage = 10, id, url } = req.query;
         const fdata = {
             role: "Clinic"
+        }
+        if (id) {
+            const userfound = await User.findOne({ _id: id });
+            fdata['_id'] = userfound._id;
+        }
+        if (url) {
+            fdata['slug'] = url;
+        }
+        if (req.user) {
+            if (req.user.role == "Clinic") {
+                fdata['_id'] = req.user._id
+            }
         }
         const totalDocs = await User.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
@@ -149,9 +169,16 @@ exports.get_clinics = async (req, res) => {
                         }
                     ]
                 }
+            },
+            {
+                $sort: { createdAt: -1 }
+            },
+            {
+                $skip: skip
             }
         ]);
-        return res.json({ success: 1, data: result, message: "List of clinics" });
+        const pagination = { totalPages, totalDocs, perPage, page };
+        return res.json({ pagination, success: 1, data: result, message: "List of clinics" });
 
     } catch (err) {
         return res.json({ success: 0, message: err.message, data: false })
@@ -183,3 +210,4 @@ exports.clinic_login = async (req, res) => {
         return res.json({ success: 0, message: err.message });
     }
 }
+

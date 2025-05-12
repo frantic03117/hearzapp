@@ -46,7 +46,7 @@ router.post('/register', Auth, store.fields([
     { name: 'aadhaar_back', maxCount: 1 },
     { name: 'pan_image', maxCount: 1 }
 ]), store_profile);
-router.get('/all', user_list);
+router.get('/all', Auth, user_list);
 router.post('/auth', admin_login);
 router.get('/', Auth, my_profile);
 

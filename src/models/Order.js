@@ -8,6 +8,11 @@ const schema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User"
     },
+    clinic: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
 
     cartids: [{
         type: Schema.Types.ObjectId,

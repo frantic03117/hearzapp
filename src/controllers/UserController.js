@@ -228,6 +228,12 @@ exports.user_list = async (req, res) => {
         if (url) {
             fdata['slug'] = url;
         }
+        if (req.user) {
+            if (req.user.role == "Clinic") {
+                fdata['clinic'] = req.user._id
+            }
+        }
+
         if (keyword) {
             fdata["$or"] = [
                 { name: { $regex: keyword, $options: "i" } },
@@ -381,7 +387,6 @@ exports.admin_login = async (req, res) => {
         const fdata = {
             email: email,
             password: password,
-            role: "Admin"
         }
         const userfind = await User.findOne(fdata);
         if (!userfind) {
@@ -390,7 +395,7 @@ exports.admin_login = async (req, res) => {
         const tokenuser = {
             _id: userfind._id,
         }
-        const token = userfind ? jwt.sign({ user: tokenuser }, SECRET_KEY, { expiresIn: "30 days" }) : ""
+        const token = userfind ? jwt.sign({ user: tokenuser }, SECRET_KEY) : ""
         return res.json({ success: 1, message: 'Login successfully', data: token });
     } catch (err) {
         return res.json({ success: 0, message: err.message });
