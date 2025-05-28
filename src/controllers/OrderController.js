@@ -96,6 +96,9 @@ exports.get_orders = async (req, res) => {
                 populate: {
                     path: "product"
                 }
+            }).populate({
+                path: "user",
+                select: "name email mobile profile_image"
             })
             .sort({ createdAt: -1 })
             .skip(skip)

@@ -53,6 +53,7 @@ const clinicroutes = require('./src/routes/clinicRoutes');
 const orderroutes = require('./src/routes/OrderRoutes');
 const bannerroutes = require('./src/routes/BannerRoute');
 const adminroutes = require('./src/routes/AdminRoutes');
+const settingroutes = require('./src/routes/SettingRoutes');
 app.use('/api/v1/user', userroutes);
 app.use('/api/v1/doctor', doctorroutes);
 app.use('/api/v1/admin', adminroutes);
@@ -72,6 +73,7 @@ app.use('/api/v1/policy', policyRoutes);
 app.use('/api/v1/clinic', clinicroutes);
 app.use('/api/v1/order', orderroutes);
 app.use('/api/v1/banner', bannerroutes);
+app.use('/api/v1/setting', settingroutes);
 
 app.get('/', (req, res) => res.send('Hearzapp  Started'))
 // app.listen(port, () => console.log(`Rephrase app listening on port ${port}! http://localhost:7887/`))
