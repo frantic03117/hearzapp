@@ -1,6 +1,11 @@
 const { Schema, model } = require("mongoose");
 
 const schema = new Schema({
+    parent: {
+        type: Schema.Types.ObjectId,
+        ref: "Setting",
+        default: null
+    },
     title: {
         type: String
     },

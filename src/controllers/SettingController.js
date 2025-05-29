@@ -1,3 +1,4 @@
+const { default: axios } = require("axios");
 const Setting = require("../models/Setting")
 
 exports.create_setting = async (req, res) => {
@@ -14,13 +15,16 @@ exports.create_setting = async (req, res) => {
 }
 exports.get_setting = async (req, res) => {
     try {
-        const { type, title, page = 1, perPage = 10 } = req.query;
+        const { type, title, parent, page = 1, perPage = 10 } = req.query;
         const fdata = {};
         if (type) {
             fdata['type'] = type;
         }
         if (title) {
             fdata['title'] = title;
+        }
+        if (parent) {
+            fdata['parent'] = parent;
         }
         const resp = await Setting.find(fdata);
         return res.json({ success: 1, message: "Fetched successfully", data: resp })
