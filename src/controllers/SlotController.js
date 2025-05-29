@@ -99,6 +99,7 @@ exports.get_slot = async (req, res) => {
         if (dayname) {
             fdata["weekdayName"] = dayname;
         }
+
         if (date) {
             const parsedDate = new Date(date);
             if (isNaN(parsedDate)) {
@@ -106,11 +107,33 @@ exports.get_slot = async (req, res) => {
             }
             const utdate = moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate();
             fdata['weekdayName'] = weekdays[parsedDate.getDay()];
-            const isholiday = await Slot.findOne({ date: utdate, clinic: req.body.clinic, status: "blocked", isHoliday: true });
+            const findholiday = {
+                date: utdate,
+                isHoliday: true,
+                doctor: doctor
+            }
+            if (req.user.role == "Clinic") {
+                findholiday['clinic'] = req.user._id;
+            }
+            if (clinic) {
+                findholiday['clinic'] = clinic
+            }
+            const isholiday = await Slot.findOne(findholiday);
+            console.log(isholiday);
             if (isholiday) {
                 return res.json({ isholiday, data: [], success: 0, message: "Given date is marked as holiday" })
             }
-            const blockedSlots = await Slot.find({ date: utdate, clinic: req.body.clinic, status: "blocked" });
+            const findisblocked = {
+                date: utdate,
+                status: "blocked"
+            }
+            if (req.user.role == "Clinic") {
+                findisblocked['clinic'] = req.user._id;
+            }
+            if (clinic) {
+                findisblocked['clinic'] = clinic
+            }
+            const blockedSlots = await Slot.find(findisblocked);
 
             if (blockedSlots.length > 0) {
                 const btimes = blockedSlots.map(itm => itm.start_time);
@@ -140,14 +163,12 @@ exports.get_slot = async (req, res) => {
 };
 exports.mark_holiday = async (req, res) => {
     try {
-
-
         const clinic_id = req.user._id;
         const findclinic = await User.findOne({ _id: clinic_id, role: "Clinic" });
         if (!findclinic) {
             return res.json({ success: 0, message: "Only clinic can add slots", data: null })
         }
-        const { date } = req.body;
+        const { date, doctor } = req.body;
         if (!date) {
             return res.json({ success: 0, message: "date is required", data: null })
         }
@@ -157,6 +178,7 @@ exports.mark_holiday = async (req, res) => {
         const blockdata = {
             weekdayName: weekdayname,
             clinic: clinic_id,
+            doctor: doctor,
             status: "blocked",
             isHoliday: true,
             date: moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate(),
@@ -164,6 +186,7 @@ exports.mark_holiday = async (req, res) => {
         }
         const isAlreadyBlocked = await Slot.findOne({
             clinic: clinic_id,
+            doctor: doctor,
             status: "blocked",
             isHoliday: true,
             date: moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate(),
