@@ -8,7 +8,7 @@ exports.create_slot = async (req, res) => {
         if (!findclinic) {
             return res.json({ success: 0, message: "Only clinic can add slots", data: null })
         }
-        const { date, availability, duration, gap, dayname, doctorId } = req.body;
+        const { date, duration, gap, dayname, doctor } = req.body;
         if (!duration) {
             return res.json({ success: 0, data: null, message: "Duration is mandatory." });
         }
@@ -18,9 +18,7 @@ exports.create_slot = async (req, res) => {
         if (!dayname) {
             return res.json({ success: 0, data: null, message: "Dayname is mandatory." });
         }
-        if (!availability || !Array.isArray(availability) || availability.length === 0) {
-            return res.json({ success: 0, data: null, message: "Availability array is mandatory and should not be empty." });
-        }
+
         const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         if (!weekdays.includes(dayname)) {
             return res.json({ success: 0, data: null, message: "Please enter a correct dayname (e.g., Monday)." });
@@ -36,29 +34,35 @@ exports.create_slot = async (req, res) => {
             slotDate = moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate();
         }
         const slotsToSave = [];
-        for (const range of availability) {
-            let start = moment(range.start_time, "HH:mm");
-            const end = moment(range.end_time, "HH:mm");
-            while (start.clone().add(duration, 'minutes').isSameOrBefore(end)) {
-                const slotStartTime = start.format("HH:mm");
-                const slotEndTime = start.clone().add(duration, 'minutes').format("HH:mm");
-                const newSlot = {
-                    doctor: doctorId || null,
-                    clinic: clinic_id,
-                    date: slotDate || null, // if provided
-                    weekdayName: weekdayName,
-                    start_time: slotStartTime, // Save as "HH:mm" string
-                    end_time: slotEndTime,
-                    status: "available",
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                };
-                slotsToSave.push(newSlot);
-                start = start.clone().add(duration + gap, 'minutes');
-            }
+        const stime = req.body.start_time;
+        const etime = req.body.end_time;
+        const durationMins = parseInt(req.body.duration, 10);
+        const gapMins = parseInt(req.body.gap, 10);
+        const totalSlotStep = durationMins + gapMins;
+        let start = moment(stime, "HH:mm");
+        const end = moment(etime, "HH:mm");
+        while (start.clone().add(durationMins, 'minutes').isSameOrBefore(end)) {
+            const slotStartTime = start.format("HH:mm");
+            const slotEndTime = start.clone().add(durationMins, 'minutes').format("HH:mm");
+
+            const newSlot = {
+                doctor: doctor,
+                clinic: clinic_id,
+                date: slotDate || null,
+                weekdayName: weekdayName,
+                start_time: slotStartTime,
+                end_time: slotEndTime,
+                status: "available",
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
+
+            slotsToSave.push(newSlot);
+            start = start.clone().add(totalSlotStep, 'minutes');
         }
+
         if (slotsToSave.length > 0) {
-            const de_dat = { clinic: clinic_id, weekdayName };
+            const de_dat = { clinic: clinic_id, weekdayName, doctor: doctor, };
             await Slot.deleteMany(de_dat);
             await Slot.insertMany(slotsToSave);
         }
@@ -76,10 +80,13 @@ exports.create_slot = async (req, res) => {
 };
 exports.get_slot = async (req, res) => {
     try {
-        const { dayname, date, clinic, duration = 30 } = req.query;
+        const { dayname, date = new Date(), clinic, doctor } = req.query;
         const fdata = {};
         if (req.user.role == "Clinic") {
             fdata['clinic'] = req.user._id
+        }
+        if (doctor) {
+            fdata['doctor'] = doctor;
         }
         const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         // if (date) {
@@ -115,7 +122,7 @@ exports.get_slot = async (req, res) => {
             path: 'clinic',
             select: 'name email mobile profile_image role'
         }).lean().sort({ start_time: 1 });
-        const today = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
+        const today = moment(date).tz('Asia/Kolkata').format('YYYY-MM-DD');
         const formattedSlots = slots.map(slot => ({
             ...slot,
             start_time: moment.utc(today + " " + slot.start_time).format("YYYY-MM-DD HH:mm"),
