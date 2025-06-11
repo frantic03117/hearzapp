@@ -1,6 +1,9 @@
 const { Schema, model } = require("mongoose");
 
 const bookingSchema = new Schema({
+    request_id: {
+        type: Number
+    },
     user: {
         type: Schema.Types.ObjectId,
         ref: "User",
@@ -18,6 +21,11 @@ const bookingSchema = new Schema({
         default: "Clinic"
     },
     clinic: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
+    doctor: {
         type: Schema.Types.ObjectId,
         ref: "User",
         default: null

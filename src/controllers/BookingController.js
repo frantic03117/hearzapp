@@ -41,7 +41,9 @@ exports.create_booking = async (req, res) => {
     const end_at = moment.tz(`${booking_date} ${slotEnd}`, "YYYY-MM-DD HH:mm", "Asia/Kolkata").utc().toDate();
     // return res.json({ start_at, end_at });
     const consult_amount = finddoctor?.consultation_charge ?? 2000;
+    const totalDocs = await Booking.countDocuments();
     const bdata = {
+        request_id: parseInt(totalDocs) + 1,
         clinic: clinic_id,
         mode: req.body.mode ?? "Online",
         user: userId,
@@ -113,6 +115,7 @@ exports.create_booking = async (req, res) => {
 
 exports.get_booking = async (req, res) => {
     try {
+        // await Booking.deleteMany({});
         const userId = req.user._id;
         const role = req.user.role;
         const { date, page = 1, perPage = 10 } = req.query;
@@ -129,13 +132,19 @@ exports.get_booking = async (req, res) => {
         const totalDocs = await Booking.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
-        let bookings = await Booking.find(fdata).populate({
+        let bookings = await Booking.find(fdata).populate([{
             path: 'clinic',
             select: 'custom_request_id name mobile  address role profile_image'
-        }).populate({
+        },
+        {
             path: "user",
             select: 'custom_request_id name mobile gender dob address role profile_image'
-        }).sort({ booking_date: -1 }).skip(skip).limit(perPage).lean();
+        },
+        {
+            path: "doctor",
+            select: 'custom_request_id name mobile gender dob address role profile_image'
+        }
+        ]).sort({ booking_date: -1 }).skip(skip).limit(perPage).lean();
         bookings = bookings.map(booking => ({
             ...booking,
             start_at: moment.utc(booking.start_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),

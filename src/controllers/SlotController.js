@@ -56,13 +56,12 @@ exports.create_slot = async (req, res) => {
                 createdAt: new Date(),
                 updatedAt: new Date()
             };
-
             slotsToSave.push(newSlot);
             start = start.clone().add(totalSlotStep, 'minutes');
         }
 
         if (slotsToSave.length > 0) {
-            const de_dat = { clinic: clinic_id, weekdayName, doctor: doctor, };
+            const de_dat = { clinic: clinic_id, weekdayName, doctor: doctor, date: null };
             await Slot.deleteMany(de_dat);
             await Slot.insertMany(slotsToSave);
         }
@@ -80,8 +79,12 @@ exports.create_slot = async (req, res) => {
 };
 exports.get_slot = async (req, res) => {
     try {
+        // const tdat = "2025-06-13";
+        // const thiteen = moment(tdat).tz('Asia/Kolkata').format('YYYY-MM-DD');
         const { dayname, date = new Date(), clinic, doctor } = req.query;
-        const fdata = {};
+        const fdata = {
+            isHoliday: false
+        };
         if (req.user.role == "Clinic") {
             fdata['clinic'] = req.user._id
         }
@@ -99,6 +102,9 @@ exports.get_slot = async (req, res) => {
         if (dayname) {
             fdata["weekdayName"] = dayname;
         }
+        if (!date) {
+            return res.json({ success: 0, message: "date not found" });
+        }
 
         if (date) {
             const parsedDate = new Date(date);
@@ -110,7 +116,8 @@ exports.get_slot = async (req, res) => {
             const findholiday = {
                 date: utdate,
                 isHoliday: true,
-                doctor: doctor
+                doctor: doctor,
+                status: "blocked"
             }
             if (req.user.role == "Clinic") {
                 findholiday['clinic'] = req.user._id;
@@ -118,8 +125,9 @@ exports.get_slot = async (req, res) => {
             if (clinic) {
                 findholiday['clinic'] = clinic
             }
+
             const isholiday = await Slot.findOne(findholiday);
-            console.log(isholiday);
+
             if (isholiday) {
                 return res.json({ isholiday, data: [], success: 0, message: "Given date is marked as holiday" })
             }
@@ -141,11 +149,16 @@ exports.get_slot = async (req, res) => {
             }
         }
 
-        const slots = await Slot.find(fdata).populate({
+        const slots = await Slot.find(fdata).populate([{
             path: 'clinic',
             select: 'name email mobile profile_image role'
-        }).lean().sort({ start_time: 1 });
+        }, {
+            path: 'doctor',
+            select: 'name email mobile profile_image role'
+        }]).lean().sort({ start_time: 1 });
+        // return res.json({ slots });
         const today = moment(date).tz('Asia/Kolkata').format('YYYY-MM-DD');
+
         const formattedSlots = slots.map(slot => ({
             ...slot,
             start_time: moment.utc(today + " " + slot.start_time).format("YYYY-MM-DD HH:mm"),
