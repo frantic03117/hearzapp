@@ -8,8 +8,23 @@ const _create = async (req, res) => {
     })
 }
 const getAll = async (req, res) => {
-    const items = await FaqModel.find({});
-    return res.json({ data: items, errors: [], success: 1, message: "Fetched Faqs successfully." });
+    const { id, page = 1, perPage = 10 } = req.query;
+    let filter = {};
+    if(id){
+        filter['_id'] = id;
+    }
+    const totalDocs = await FaqModel.countDocuments(filter);
+    const skip = (page - 1) * perPage;
+    const totalPages = Math.ceil(totalDocs / perPage);
+    const pagination = {
+        totalPages,
+        perPage,
+        page,
+        totalDocs
+    }
+    
+    const items = await FaqModel.find(filter).sort({createdAt : -1}).skip(skip).limit(perPage);
+    return res.json({ data: items, errors: [], filter, success: 1, message: "Fetched Faqs successfully.", pagination });
 }
 const destroy = async (req, res) => {
     const { _id } = req.params;

@@ -51,6 +51,11 @@ const get_policy_by_id = async (req, res) => {
     const items = await PolicyModel.findOne({ _id: id });
     return res.json({ errors: [], data: items, success: 1, message: "Policy Data" });
 }
+const delete_policy = async ()=> {
+     const id = req.params.id;
+    const items = await PolicyModel.deleteOne({ _id: id });
+    return res.json({ errors: [], data: items, success: 1, message: "Policy deleted" });
+}
 module.exports = {
-    _create, get_policies, get_policy, get_policy_by_id
+    _create, get_policies, get_policy, get_policy_by_id, delete_policy
 }
