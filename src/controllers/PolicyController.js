@@ -37,7 +37,15 @@ const _create = async (req, res) => {
     }
 };
 const get_policies = async (req, res) => {
-    const items = await PolicyModel.find({});
+    const {url, id} = req.query;
+    const fdata = {};
+    if(url){
+        fdata['url'] = url
+    }
+    if(id){
+        fdata['_id'] = id
+    }
+    const items = await PolicyModel.find({...fdata});
     return res.json({ errors: [], data: items, success: 1, message: "List of Policies" });
 }
 const get_policy = async (req, res) => {
