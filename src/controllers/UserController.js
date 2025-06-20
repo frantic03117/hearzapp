@@ -124,21 +124,21 @@ exports.update_profile = async (req, res) => {
             return res.json({ success: 0, message: 'The following fields are required:' + emptyFields.join(','), fields: emptyFields });
         }
         const { mobile } = req.body;
+        if (mobile) {
+            const isMobileExists = await User.findOne({ mobile: mobile, _id: { $ne: id } });
+            if (mobile?.toString().length != 10) {
+                return res.json({ success: 0, message: "Mobile is not valid" })
+            }
 
-        const isMobileExists = await User.findOne({ mobile: mobile, _id: { $ne: id } });
-        if (mobile.toString().length != 10) {
-            return res.json({ success: 0, message: "Mobile is not valid" })
+            if (isMobileExists) {
+                return res.json({
+                    errors: [{ 'message': "Mobile is already in use" }],
+                    success: 0,
+                    data: [],
+                    message: "Mobile is already in use"
+                })
+            }
         }
-
-        if (isMobileExists) {
-            return res.json({
-                errors: [{ 'message': "Mobile is already in use" }],
-                success: 0,
-                data: [],
-                message: "Mobile is already in use"
-            })
-        }
-
 
 
         const data = {
