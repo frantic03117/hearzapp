@@ -5,6 +5,7 @@ const store = require("../middleware/Upload");
 
 const router = Router();
 router.get('/', Auth, get_clinics);
+router.get('/all', get_clinics);
 router.post('/register', Auth, store.fields([
     { name: 'profile_image', maxCount: 1 },
     { name: 'registration_certificate', maxCount: 1 },

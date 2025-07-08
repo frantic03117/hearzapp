@@ -16,8 +16,6 @@ async function generateUniqueSlug(name) {
     if (count > 1) {
         slug = `${slug}-${count}`;
     }
-
-
     return slug;
 }
 // Manual validation function
@@ -93,12 +91,19 @@ exports.getProducts = async (req, res) => {
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
         const products = await Product.find(fdata).populate("category").sort({ createdAt: -1 }).skip(skip).limit(perPage).lean();
-        const wishlited = await Cart.find({ user: req.user._id, cart_status: "Wishlist" });
-        const wishpids = wishlited.map(itm => itm.product.toString());
-        const productsWithWishlist = products.map(product => ({
-            ...product,
-            is_wishlist: wishpids.includes(product._id.toString())
-        }));
+        let productsWithWishlist;
+        if (req.user) {
+            const wishlited = await Cart.find({ user: req.user._id, cart_status: "Wishlist" });
+            const wishpids = wishlited.map(itm => itm.product.toString());
+            productsWithWishlist = products.map(product => ({
+                ...product,
+                is_wishlist: wishpids.includes(product._id.toString())
+            }));
+        } else {
+            productsWithWishlist = products;
+        }
+
+
         const pagination = {
             page, perPage, totalPages, totalDocs
         }
@@ -119,13 +124,14 @@ exports.getProductById = async (req, res) => {
     }
 };
 
-// Update Product
 exports.updateProduct = async (req, res) => {
     try {
         let updateData = req.body;
+
         if (typeof updateData.variants === "string") {
             updateData.variants = JSON.parse(updateData.variants);
         }
+
         if (typeof updateData.category === "string") {
             updateData.category = JSON.parse(updateData.category);
         }
@@ -133,13 +139,45 @@ exports.updateProduct = async (req, res) => {
         const errors = validateProduct(updateData);
         if (errors.length > 0) return res.status(400).json({ errors });
 
+        // Fetch the existing product
+        const existingProduct = await Product.findById(req.params.id);
+        if (!existingProduct) return res.status(404).json({ message: "Product not found" });
+
+        const filesByVariantIndex = {};
+        if (req.files) {
+            for (const file of req.files) {
+                const match = file.fieldname.match(/^variantImages(\d+)$/);
+                if (match) {
+                    const index = match[1];
+                    if (!filesByVariantIndex[index]) filesByVariantIndex[index] = [];
+                    filesByVariantIndex[index].push(file.path);
+                }
+            }
+        }
+
+        // Merge variants: replace images only if new ones are provided
+        updateData.variants = updateData.variants.map((variant, idx) => {
+            const newImages = filesByVariantIndex[idx];
+            const existingVariant = existingProduct.variants[idx];
+
+            return {
+                ...variant,
+                images: newImages && newImages.length > 0
+                    ? newImages
+                    : existingVariant?.images || []
+            };
+        });
+
         const updated = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!updated) return res.status(404).json({ message: "Product not found" });
-        res.status(200).json(updated);
+
+        res.status(200).json({ success: 1, data: updated, message: "updated successfully" });
+
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 };
+
 
 // Delete Product
 exports.deleteProduct = async (req, res) => {
