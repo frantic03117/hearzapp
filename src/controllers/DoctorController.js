@@ -30,7 +30,7 @@ exports.get_specility = async (req, res) => {
     return res.json({ success: 1, message: "List of specilities", data: resps });
 }
 exports.getDoctorWithSpecialization = async (req, res) => {
-    const { url, id, clinic, languages = [], specility = [], mode = [], page = 1, perPage = 10 } = req.query;
+    const { url, id, clinic, clinic_slug, languages = [], specility = [], mode = [], page = 1, perPage = 10 } = req.query;
 
 
     try {
@@ -43,6 +43,13 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         }
         if (clinic) {
             fdata['clinic'] = clinic
+        }
+        if (clinic_slug) {
+            const findClinic = await User.findOne({ slug: clinic_slug });
+            if (!findClinic) {
+                return res.json({ success: 0, message: "Clinic not found", data: [] });
+            }
+            fdata['clinic'] = findClinic._id;
         }
         if (req.user) {
             if (req.user.role == "Clinic") {

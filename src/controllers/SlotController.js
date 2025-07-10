@@ -85,8 +85,12 @@ exports.get_slot = async (req, res) => {
         const fdata = {
             isHoliday: false
         };
-        if (req.user.role == "Clinic") {
-            fdata['clinic'] = req.user._id
+        if (req.user) {
+
+
+            if (req.user.role == "Clinic") {
+                fdata['clinic'] = req.user._id
+            }
         }
         if (doctor) {
             fdata['doctor'] = doctor;
@@ -119,7 +123,8 @@ exports.get_slot = async (req, res) => {
                 doctor: doctor,
                 status: "blocked"
             }
-            if (req.user.role == "Clinic") {
+
+            if (req.user && req.user.role == "Clinic") {
                 findholiday['clinic'] = req.user._id;
             }
             if (clinic) {
@@ -135,7 +140,7 @@ exports.get_slot = async (req, res) => {
                 date: utdate,
                 status: "blocked"
             }
-            if (req.user.role == "Clinic") {
+            if (req.user && req.user.role == "Clinic") {
                 findisblocked['clinic'] = req.user._id;
             }
             if (clinic) {

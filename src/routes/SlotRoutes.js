@@ -7,5 +7,6 @@ router.post('/', Auth, create_slot);
 router.post('/holiday', Auth, mark_holiday);
 router.post('/block', Auth, block_slot);
 router.get('/', Auth, get_slot);
+router.get('/find', get_slot);
 
 module.exports = router;

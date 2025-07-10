@@ -153,6 +153,13 @@ exports.get_clinics = async (req, res) => {
                 $match: fdata
             },
             {
+                $project: {
+                    password: 0,
+                    email: 0,
+                    mobile: 0
+                }
+            },
+            {
                 $lookup: {
                     from: "users",
                     localField: "_id",
@@ -162,8 +169,6 @@ exports.get_clinics = async (req, res) => {
                         {
                             $project: {
                                 name: 1,
-                                email: 1,
-                                mobile: 1,
                                 profile_image: 1
                             }
                         }
