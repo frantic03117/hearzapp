@@ -6,6 +6,9 @@ const schema = new Schema({
         ref: "Setting",
         default: null
     },
+    slug: {
+        type: String
+    },
     title: {
         type: String
     },

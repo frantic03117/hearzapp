@@ -1,12 +1,22 @@
 const { default: axios } = require("axios");
 const Setting = require("../models/Setting")
-
+const makeSlug = (title) => {
+    return title
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+}
 exports.create_setting = async (req, res) => {
     try {
         const data = { ...req.body };
+        const media_value = req.body.media_value;
+        const url = makeSlug(media_value);
         if (req.file) {
             data['file'] = req.file.path
         }
+        data['slug'] = url;
         const resp = await Setting.create(data);
         return res.json({ success: 1, message: "Created successfully", data: resp })
     } catch (err) {
@@ -43,10 +53,14 @@ exports.delete_setting = async (req, res) => {
 exports.update_setting = async (req, res) => {
     try {
         const data = { ...req.body };
+        const media_value = req.body.media_value;
         if (req.file) {
             data['file'] = req.file.path
         }
-        console.log(data);
+        if (media_value) {
+            const url = makeSlug(media_value);
+            data['slug'] = url;
+        }
         const resp = await Setting.findOneAndUpdate({ _id: req.params.id }, { $set: { ...data } }, { new: true });
         return res.json({ success: 1, message: "updated successfully", data: resp })
     } catch (err) {
