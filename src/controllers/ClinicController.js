@@ -78,6 +78,9 @@ exports.store_profile = async (req, res) => {
         if (req.body.email) {
             data['email'] = email.toLowerCase()
         }
+        if (req.body.category) {
+            data['category'] = JSON.parse(req.body.category)
+        }
 
         if (req.files.profile_image) {
             data['profile_image'] = req.files.profile_image[0].path
@@ -129,7 +132,7 @@ exports.store_profile = async (req, res) => {
 
 exports.get_clinics = async (req, res) => {
     try {
-        const { page = 1, perPage = 10, id, url } = req.query;
+        const { category, page = 1, perPage = 10, id, url } = req.query;
         const fdata = {
             role: "Clinic"
         }
@@ -140,11 +143,28 @@ exports.get_clinics = async (req, res) => {
         if (url) {
             fdata['slug'] = url;
         }
+        if (category) {
+            fdata['category'] = { $in: category.split(',') };
+        }
+        let project = {};
         if (req.user) {
             if (req.user.role == "Clinic") {
                 fdata['_id'] = req.user._id
             }
+            if (req.user.role == "User") {
+                project = {
+                    password: 0,
+                    email: 0,
+                    mobile: 0
+                }
+            } else {
+                project = {
+                    _v: 0
+                }
+            }
         }
+
+
         const totalDocs = await User.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
@@ -153,11 +173,7 @@ exports.get_clinics = async (req, res) => {
                 $match: fdata
             },
             {
-                $project: {
-                    password: 0,
-                    email: 0,
-                    mobile: 0
-                }
+                $project: project
             },
             {
                 $lookup: {
@@ -173,6 +189,14 @@ exports.get_clinics = async (req, res) => {
                             }
                         }
                     ]
+                }
+            },
+            {
+                $lookup: {
+                    from: "settings",
+                    localField: "category",     // your array of ObjectIds
+                    foreignField: "_id",        // primary key of `Setting`
+                    as: "categories"
                 }
             },
             {

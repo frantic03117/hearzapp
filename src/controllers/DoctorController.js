@@ -30,8 +30,7 @@ exports.get_specility = async (req, res) => {
     return res.json({ success: 1, message: "List of specilities", data: resps });
 }
 exports.getDoctorWithSpecialization = async (req, res) => {
-    const { url, id, clinic, clinic_slug, languages = [], specility = [], mode = [], page = 1, perPage = 10 } = req.query;
-
+    const { url, id, clinic, category, clinic_slug, languages = [], specility = [], mode = [], page = 1, perPage = 10 } = req.query;
 
     try {
         const languagesArr = Array.isArray(languages) ? languages : languages.split(',').filter(Boolean);
@@ -39,10 +38,23 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         const modeArr = Array.isArray(mode) ? mode : mode.split(',').filter(Boolean);
 
         const fdata = {
-            "role": "Doctor"
+            "role": "Doctor",
+        }
+        if (req.user) {
+            if (req.user.role == "User") {
+                fdata['is_verified'] = true;
+            }
+        } else {
+            fdata['is_verified'] = true;
         }
         if (clinic) {
             fdata['clinic'] = clinic
+        }
+        if (id) {
+            fdata['_id'] = id
+        }
+        if (category) {
+            fdata['category'] = { $in: category.split(',') }
         }
         if (clinic_slug) {
             const findClinic = await User.findOne({ slug: clinic_slug });
@@ -84,13 +96,24 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         const skip = (page - 1) * perPage;
 
 
-        const doctors = await User.find(fdata).populate('clinic').sort({ createdAt: -1 }).skip(skip).limit(perPage);
+        const doctors = await User.find(fdata).populate('category').populate('clinic').sort({ createdAt: -1 }).skip(skip).limit(perPage);
         const pagination = { perPage, page, totalPages, totalDocs }
-        return res.json({ success: 1, message: "List of doctors", data: doctors, pagination })
+        return res.json({ success: 1, message: "List of doctors", data: doctors, pagination, fdata })
     } catch (error) {
         console.error("Error fetching doctor with specialization:", error);
     }
 }
-exports.add_appointment = async (req, res) => {
-
+exports.handleDoctorVerify = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!['Admin', 'Clinic'].includes(req.user.role)) {
+            return res.status(403).json({ success: 0, message: "Invalid request" });
+        }
+        const doctor = await User.findOne({ _id: id });
+        const isverified = !doctor.is_verified;
+        const upresp = await User.findOneAndUpdate({ _id: id }, { $set: { is_verified: isverified } }, { new: true });
+        return res.json({ success: 1, message: "Updated successfully", data: upresp });
+    } catch (err) {
+        return res.json({ success: 0, message: err.message })
+    }
 }

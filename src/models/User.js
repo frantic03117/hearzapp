@@ -53,6 +53,15 @@ const schema = new Schema({
         ref: 'User',
         default: null
     },
+    category: {
+        type: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'Setting'
+            }
+        ],
+        default: []
+    },
     ref_code: {
         type: String
     },
@@ -81,6 +90,9 @@ const schema = new Schema({
     },
     languages: {
         type: [String]
+    },
+    online_fee: {
+        type: Number
     },
     mci_number: {
         type: String

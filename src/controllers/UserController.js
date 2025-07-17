@@ -144,6 +144,9 @@ exports.update_profile = async (req, res) => {
         const data = {
             ...req.body
         }
+        if (req.body.category) {
+            data['category'] = JSON.parse(req.body.category)
+        }
 
         if (req.files?.profile_image) {
             data['profile_image'] = req.files.profile_image[0].path
@@ -316,6 +319,9 @@ exports.store_profile = async (req, res) => {
         }
         if (req.body.email) {
             data['email'] = email.toLowerCase()
+        }
+        if (req.body.category) {
+            data['category'] = JSON.parse(req.body.category)
         }
         if (req.files) {
             if (req.files?.profile_image) {
