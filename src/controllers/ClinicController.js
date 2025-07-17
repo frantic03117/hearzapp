@@ -1,3 +1,4 @@
+const Setting = require("../models/Setting");
 const User = require("../models/User");
 const SECRET_KEY = process.env.SECRET_KEY ?? "frantic@hearzapp#6887";
 const jwt = require('jsonwebtoken');
@@ -144,9 +145,12 @@ exports.get_clinics = async (req, res) => {
             fdata['slug'] = url;
         }
         if (category) {
-            fdata['category'] = { $in: category.split(',') };
+            const findsetting = await Setting.find({ _id: { $in: category.split(',') } });
+            fdata['category'] = { $in: findsetting.map(itm => itm._id) };
         }
-        let project = {};
+        let project = {
+            password: 0,
+        };
         if (req.user) {
             if (req.user.role == "Clinic") {
                 fdata['_id'] = req.user._id
@@ -154,8 +158,6 @@ exports.get_clinics = async (req, res) => {
             if (req.user.role == "User") {
                 project = {
                     password: 0,
-                    email: 0,
-                    mobile: 0
                 }
             } else {
                 project = {
