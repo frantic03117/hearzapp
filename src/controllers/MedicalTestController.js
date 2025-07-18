@@ -2,19 +2,20 @@ const MedicalTest = require("../models/MedicalTest");
 
 exports.startTest = async (req, res) => {
     try {
+        console.log(req.user);
         const { for_self } = req.body;
         if (!['Yes', 'No'].includes(for_self)) {
             return res.json({ success: 0, message: "for_self must be either Yes or No" });
         }
         let usercreated;
-        if (for_self == "0") {
+        if (for_self == "No") {
             const { name, mobile } = req.body;
             if (!name || !mobile) {
-                return res.json({ success: 0, message: "Patient name and mobile is mandatory for for_self = 0" })
+                return res.json({ success: 0, message: "Patient name and mobile is mandatory for for_self = No" })
             }
             usercreated = await User.create({ name: name, mobile: mobile, role: "User" });
         }
-        const patient = for_self == "1" ? req.user._id : usercreated._id;
+        const patient = for_self == "Yes" ? req.user._id : usercreated._id;
         const data = {
             'user': req.user._id,
             'patient': patient,
@@ -32,7 +33,7 @@ exports.updateEarTest = async (req, res) => {
 
     // Validate ear
     if (!['left_ear', 'right_ear'].includes(ear)) {
-        return res.json({ success: 0, message: "Please select correct ear", data: [] });
+        return res.json({ success: 0, message: "Please select correct ear either left_ear, right_eaar", data: [] });
     }
 
     // Validate eardata
@@ -57,7 +58,7 @@ exports.updateEarTest = async (req, res) => {
         const edata = findtst[ear] || [];
         const ndata = [...edata, ...eardata];
 
-        await MedicalTest.findByIdAndUpdate(id, { $set: { [ear]: ndata } });
+        await MedicalTest.findByIdAndUpdate(id, { $set: { [ear]: ndata } })
 
         return res.json({ success: 1, message: "Ear updated" });
     } catch (err) {
@@ -76,15 +77,11 @@ exports.medicaltests = async (req, res) => {
         }
         const resp = await MedicalTest.find(fdata).populate([
             {
-                path: "User",
-                select: "name email mobile profile_image"
-            },
-            {
-                path: "Patient",
+                path: "user",
                 select: "name email mobile profile_image"
             }
-        ])
-        return req.json({ success: 1, message: "Medical Tests", data: resp })
+        ]);
+        return res.json({ success: 1, message: "Medical Tests", data: resp })
     } catch (err) {
         return res.status(500).json({ success: 0, message: "Server error", error: err.message });
     }
