@@ -1,4 +1,5 @@
 const MedicalTest = require("../models/MedicalTest");
+const User = require("../models/User");
 
 exports.startTest = async (req, res) => {
     try {
