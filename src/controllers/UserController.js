@@ -223,7 +223,7 @@ exports.user_list = async (req, res) => {
         }
         const skip = (page - 1) * perPage;
         if (type) {
-            fdata['role'] = type;
+            fdata['role'] = { $regex: type, $options: "i" };
         }
         if (id) {
             fdata['_id'] = id;

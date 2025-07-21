@@ -10,11 +10,29 @@ exports.startTest = async (req, res) => {
         }
         let usercreated;
         if (for_self == "No") {
-            const { name, mobile } = req.body;
+            const { name, mobile, gender, dob, profession, marital_status, address, state, city, about_yourself } = req.body;
             if (!name || !mobile) {
                 return res.json({ success: 0, message: "Patient name and mobile is mandatory for for_self = No" })
             }
-            usercreated = await User.create({ name: name, mobile: mobile, role: "User" });
+            const findMobileExists = await User.findOne({ mobile: mobile });
+            if (findMobileExists) {
+                usercreated = findMobileExists;
+            } else {
+                const udata = {
+                    name: name,
+                    mobile: mobile
+                }
+                if (dob) udata['dob'] = dob;
+                if (gender) udata['gender'] = gender;
+                if (profession) udata['profession'] = profession;
+                if (marital_status) udata['marital_status'] = marital_status;
+                if (address) udata['addresss'] = address;
+                if (state) udata['state'] = state;
+                if (city) udata['city'] = city;
+                if (about_yourself) udata['about_yourself'] = about_yourself;
+                usercreated = await User.create(udata);
+            }
+
         }
         const patient = for_self == "Yes" ? req.user._id : usercreated._id;
         const data = {

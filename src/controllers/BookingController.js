@@ -118,8 +118,8 @@ exports.get_booking = async (req, res) => {
         // await Booking.deleteMany({});
         const userId = req.user._id;
         const role = req.user.role;
-        const { date, page = 1, perPage = 10 } = req.query;
-        const fdata = {}
+        const { filters, date, page = 1, perPage = 10 } = req.query;
+        let fdata = {}
         if (role == "User") {
             fdata['user'] = userId
         }
@@ -128,6 +128,9 @@ exports.get_booking = async (req, res) => {
         }
         if (date) {
             fdata["date"] = moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate();
+        }
+        if (filters) {
+            fdata = { ...fdata, ...JSON.parse(filters) };
         }
         const totalDocs = await Booking.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
@@ -149,10 +152,10 @@ exports.get_booking = async (req, res) => {
             ...booking,
             start_at: moment.utc(booking.start_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
             end_at: moment.utc(booking.end_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
-            booking_date: moment.utc(booking.date).tz("Asia/Kolkata").format("YYYY-MM-DD")
+            booking_date: moment.utc(booking.booking_date).tz("Asia/Kolkata").format("YYYY-MM-DD")
         }));
         const pagination = { perPage, page, totalPages, totalDocs };
-        return res.json({ success: 1, message: "List of bookings", data: bookings, pagination });
+        return res.json({ success: 1, message: "List of bookings", data: bookings, pagination, fdata });
     } catch (err) {
         const stiackLink = err.stack?.split("\n")[1]?.trim();
         return res.json({ success: 0, message: err.message, stackLine: stiackLink })
