@@ -34,7 +34,7 @@ exports.updateEarTest = async (req, res) => {
 
     // Validate ear
     if (!['left_ear', 'right_ear'].includes(ear)) {
-        return res.json({ success: 0, message: "Please select correct ear either left_ear, right_eaar", data: [] });
+        return res.json({ success: 0, message: "Please select correct ear either left_ear, right_ear", data: [] });
     }
 
     // Validate eardata
