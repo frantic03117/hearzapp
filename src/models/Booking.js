@@ -30,6 +30,11 @@ const bookingSchema = new Schema({
         ref: "User",
         default: null
     },
+    booked_slot: {
+        type: Schema.Types.ObjectId,
+        ref: "Slot",
+        default: null
+    },
     language: {
         type: String
     },
@@ -46,11 +51,11 @@ const bookingSchema = new Schema({
         type: String,
     },
     gateway_order_id: { type: String },
-    gateway_request: {
+    payment_gateway_request: {
         type: Schema.Types.Mixed,
         default: null
     },
-    gateway_response: {
+    payment_gateway_response: {
         type: Schema.Types.Mixed,
         default: null
     },

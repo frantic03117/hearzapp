@@ -16,6 +16,11 @@ const slotSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
     },
+    slot_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Slot",
+        default: null
+    },
     start_time: { type: String },
     end_time: { type: String },
     status: {

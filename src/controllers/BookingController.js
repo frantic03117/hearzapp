@@ -74,6 +74,7 @@ exports.create_booking = async (req, res) => {
     // return res.json({ bdata });
     const blockedSlot = await Slot.create(blockdata);
     bdata['booked_slot'] = blockedSlot._id;
+    console.log(bdata);
     const booking = await Booking.create(bdata);
     const booking_id = booking._id;
     const payment_data = {
@@ -84,7 +85,7 @@ exports.create_booking = async (req, res) => {
     await razorpay_instance.orders.create(payment_data, async function (err, order) {
         const order_id = order.id;
         const udata = {
-            order_id: order_id,
+            gateway_order_id: order_id,
             payment_gateway_request: order
         }
         const options = {
@@ -261,8 +262,9 @@ exports.update_payment_status = async (req, res) => {
         if (!order) {
             return res.json({ success: 0, message: "Not found" });
         }
-        const data = { payment_status: order.status, payment_gateway_response: order, status: order.status == "paid" ? 'booked' : "pending" };
-        const bookingdata = await Booking.findOneAndUpdate({ order_id: orderId }, { $set: data }, { new: true });
+        const pstatu = ['paid', 'Paid', 'success', 'Success'].includes(order.status) ? 'Success' : "Failed";
+        const data = { payment_status: pstatu, payment_gateway_response: order, status: order.status == "paid" ? 'booked' : "pending" };
+        const bookingdata = await Booking.findOneAndUpdate({ gateway_order_id: orderId }, { $set: data }, { new: true });
         if (order.status != "paid") {
             const booked_slot = bookingdata.booked_slot;
             await Slot.deleteOne({ _id: booked_slot });
