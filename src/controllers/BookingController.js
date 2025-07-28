@@ -194,7 +194,7 @@ exports.cancel_booking = async (req, res) => {
 }
 exports.update_booking = async (req, res) => {
     try {
-        const { doctor_id, slot_id, booking_date, booking_id } = req.body;
+        const { clinic_id, doctor_id, slot_id, booking_date, booking_id } = req.body;
         const fdata = {
             _id: booking_id
         }
@@ -236,6 +236,7 @@ exports.update_booking = async (req, res) => {
         const blockdata = {
             weekdayName: weekdayname,
             status: "blocked",
+            clinic: clinic_id,
             "doctor": doctor_id,
             "slot_id": slots._id,
             date: moment.tz(booking_date, "Asia/Kolkata").startOf("day").utc().toDate(),
@@ -248,7 +249,7 @@ exports.update_booking = async (req, res) => {
         await Slot.deleteOne({ _id: findbooking.booked_slot });
         const blockedSlot = await Slot.create(blockdata);
         bdata['booked_slot'] = blockedSlot._id;
-        const new_booking = await Booking.findOneAndUpdate({ _id: booking_id }, { $set: bdata }, { new: true });
+        const new_booking = await Booking.findOneAndUpdate({ _id: booking_id }, { $set: bdata }, { new: true }).populate('booked_slot');
         return res.json({ success: 1, message: "Booking updated successfully", data: new_booking })
     } catch (err) {
         return res.json({ success: 0, message: err.message })
