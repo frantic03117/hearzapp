@@ -243,6 +243,9 @@ exports.user_list = async (req, res) => {
                 { email: { $regex: keyword, $options: "i" } },
                 { mobile: { $regex: keyword, $options: "i" } },
             ];
+            if (type?.toLowerCase() == "user") {
+                delete fdata.clinic;
+            }
         }
         const resp = await User.find(fdata).sort({ created_at: -1 }).skip(skip).limit(perPage);
 

@@ -188,6 +188,7 @@ exports.get_slot = async (req, res) => {
                 date,
                 start_time: startTime,
                 end_time: endTime,
+                fdata,
                 status: blockedSlot ? 'blocked' : slot.status || 'available',
                 blocked_id: blockedSlot ? blockedSlot._id : null
             };
