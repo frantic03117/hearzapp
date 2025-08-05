@@ -30,7 +30,7 @@ exports.get_specility = async (req, res) => {
     return res.json({ success: 1, message: "List of specilities", data: resps });
 }
 exports.getDoctorWithSpecialization = async (req, res) => {
-    const { url, id, clinic, category, clinic_slug, languages = [], specility = [], mode = [], page = 1, perPage = 10 } = req.query;
+    const { is_verified, keyword, sortBy, order, url, id, clinic, category, clinic_slug, languages = [], specility = [], mode = [], page = 1, perPage = 10 } = req.query;
 
     try {
         const languagesArr = Array.isArray(languages) ? languages : languages.split(',').filter(Boolean);
@@ -43,12 +43,22 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         if (req.user) {
             if (req.user.role == "User") {
                 fdata['is_verified'] = true;
+            } else {
+                if (is_verified == "true") {
+                    fdata['is_verified'] = true;
+                }
+                if (is_verified == "false") {
+                    fdata['is_verified'] = false;
+                }
             }
         } else {
             fdata['is_verified'] = true;
         }
-        if (clinic) {
-            fdata['clinic'] = clinic
+        if (clinic && mongoose.Types.ObjectId.isValid(clinic)) {
+            const findClinic = await User.findOne({ _id: clinic });
+            if (findClinic) {
+                fdata['clinic'] = clinic;
+            }
         }
         if (id) {
             fdata['_id'] = id
@@ -81,7 +91,13 @@ exports.getDoctorWithSpecialization = async (req, res) => {
             }
 
         }
-
+        if (keyword) {
+            fdata["$or"] = [
+                { name: { $regex: keyword, $options: "i" } },
+                { email: { $regex: keyword, $options: "i" } },
+                { mobile: { $regex: keyword, $options: "i" } },
+            ];
+        }
         if (modeArr.length) {
             fdata['mode'] = { $in: modeArr };
         }
@@ -91,14 +107,17 @@ exports.getDoctorWithSpecialization = async (req, res) => {
                 fdata['_id'] = usr._id;
             }
         }
+        const sortField = sortBy && sortBy.trim() !== "" ? sortBy : "createdAt"; // default to "createdAt"
+        const sortOrder = order == "DESC" ? -1 : 1;
+
         const totalDocs = await User.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
 
 
-        const doctors = await User.find(fdata).populate('category').populate('clinic').sort({ createdAt: -1 }).skip(skip).limit(perPage);
+        const doctors = await User.find(fdata).populate('category').populate('clinic').sort({ [sortField]: sortOrder }).skip(skip).limit(perPage);
         const pagination = { perPage, page, totalPages, totalDocs }
-        return res.json({ success: 1, message: "List of doctors", data: doctors, pagination, fdata })
+        return res.json({ success: 1, message: "List of doctors", data: doctors, pagination, fdata, sortOrder })
     } catch (error) {
         console.error("Error fetching doctor with specialization:", error);
     }
