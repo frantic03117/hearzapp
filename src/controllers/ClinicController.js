@@ -135,7 +135,8 @@ exports.get_clinics = async (req, res) => {
     try {
         const { category, page = 1, perPage = 10, id, url } = req.query;
         const fdata = {
-            role: "Clinic"
+            role: "Clinic",
+
         }
         if (id) {
             const userfound = await User.findOne({ _id: id });
@@ -152,10 +153,12 @@ exports.get_clinics = async (req, res) => {
             password: 0,
         };
         if (req.user) {
+            console.log(req.user.role)
             if (req.user.role == "Clinic") {
                 fdata['_id'] = req.user._id
             }
             if (req.user.role == "User") {
+                fdata['is_verified'] = true
                 project = {
                     password: 0,
                 }
@@ -164,6 +167,8 @@ exports.get_clinics = async (req, res) => {
                     _v: 0
                 }
             }
+        } else {
+            fdata['is_verified'] = true
         }
 
 
@@ -209,7 +214,7 @@ exports.get_clinics = async (req, res) => {
             }
         ]);
         const pagination = { totalPages, totalDocs, perPage, page };
-        return res.json({ pagination, success: 1, data: result, message: "List of clinics" });
+        return res.json({ pagination, success: 1, data: result, message: "List of clinics", fdata });
 
     } catch (err) {
         return res.json({ success: 0, message: err.message, data: false })
@@ -241,4 +246,29 @@ exports.clinic_login = async (req, res) => {
         return res.json({ success: 0, message: err.message });
     }
 }
+exports.clinic_verified = async (req, res) => {
+    try {
+        const { id } = req.params;
 
+        // find clinic
+        const clinic = await User.findById(id);
+        if (!clinic) {
+            return res.status(404).json({ success: 0, message: "Clinic not found" });
+        }
+
+        // toggle is_verified
+        clinic.is_verified = !clinic.is_verified;
+        await clinic.save();
+
+        return res.json({
+            success: 1,
+            message: `Clinic ${clinic.is_verified ? "verified" : "unverified"} successfully`,
+            data: clinic,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: 0,
+            message: error.message,
+        });
+    }
+};
