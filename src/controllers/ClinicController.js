@@ -153,7 +153,6 @@ exports.get_clinics = async (req, res) => {
             password: 0,
         };
         if (req.user) {
-            console.log(req.user.role)
             if (req.user.role == "Clinic") {
                 fdata['_id'] = req.user._id
             }

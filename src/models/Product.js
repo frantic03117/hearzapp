@@ -6,10 +6,11 @@ const variantSchema = new Schema({
         type: String
     },            // e.g.,BTE, RIC, CIC, IIC
     connectivity: { type: String },            // e.g., Wired, Bluetooth 5.2
+    rechargeable: { type: String },             // e.g., "8 hours", "30 hours with case"
     batteryLife: { type: String },             // e.g., "8 hours", "30 hours with case"
     chargingType: { type: String },            // e.g., USB-C, Micro-USB, Wireless
     noiseCancellation: { type: String },       // e.g., ANC, ENC, Passive
-    microphone: { type: Boolean },             // true if it has a mic
+    microphone: { type: String },             // true if it has a mic
     waterResistance: { type: String },         // e.g., IPX4, IP67
     compatibility: { type: [String] },         // e.g., ["iOS", "Android", "Windows"]
     weight: { type: String },                  // e.g., "50g"
@@ -18,6 +19,7 @@ const variantSchema = new Schema({
     price: { type: Number },
     discountPrice: { type: Number },           // optional discount
     stock: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
     images: [String]                           // array of image URLs for this variant
 }, { _id: true });
 const schema = new Schema({

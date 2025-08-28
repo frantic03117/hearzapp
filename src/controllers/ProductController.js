@@ -154,12 +154,9 @@ exports.updateProduct = async (req, res) => {
                 }
             }
         }
-
-        // Merge variants: replace images only if new ones are provided
         updateData.variants = updateData.variants.map((variant, idx) => {
             const newImages = filesByVariantIndex[idx];
             const existingVariant = existingProduct.variants[idx];
-
             return {
                 ...variant,
                 images: newImages && newImages.length > 0
@@ -187,5 +184,54 @@ exports.deleteProduct = async (req, res) => {
         res.status(200).json({ message: "Product deleted successfully" });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+};
+
+exports.activeHandle = async (req, res) => {
+    try {
+        const { product_id, variant_id, isActive } = req.body;
+
+        if (!product_id) {
+            return res.status(400).json({ message: "Product ID is required" });
+        }
+
+        if (variant_id) {
+            // ✅ Toggle a specific variant
+            const product = await Product.findOneAndUpdate(
+                { _id: product_id, "variants._id": variant_id },
+                { $set: { "variants.$.isActive": isActive } },
+                { new: true }
+            );
+
+            if (!product) {
+                return res.status(404).json({ message: "Variant not found" });
+            }
+
+            return res.json({
+                message: `Variant ${isActive ? "activated" : "deactivated"} successfully`,
+                product
+            });
+
+        } else {
+            // ✅ Toggle whole product
+            const product = await Product.findByIdAndUpdate(
+                product_id,
+                { $set: { isActive } },
+                { new: true }
+            );
+
+            if (!product) {
+                return res.status(404).json({ message: "Product not found" });
+            }
+
+            return res.json({
+                message: `Product ${isActive ? "activated" : "deactivated"} successfully`,
+                product
+            });
+        }
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error", error });
     }
 };

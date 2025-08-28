@@ -11,7 +11,6 @@ const makeSlug = (title) => {
 }
 
 exports.create_video = async (req, res) => {
-    console.log(req.files)
     const { title } = req.body;
     const url = makeSlug(title);
     const data = { ...req.body };

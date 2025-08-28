@@ -57,6 +57,7 @@ const settingroutes = require('./src/routes/SettingRoutes');
 const tqroutes = require('./src/routes/testQuestionRoutes');
 const servicePagerouter = require('./src/routes/ServicePageRoute');
 const medicalRoute = require('./src/routes/medicaltestRoutes');
+const vkeyroute = require('./src/routes/VariantKeyRoutes');
 app.use('/api/v1/user', userroutes);
 app.use('/api/v1/doctor', doctorroutes);
 app.use('/api/v1/admin', adminroutes);
@@ -80,6 +81,7 @@ app.use('/api/v1/setting', settingroutes);
 app.use('/api/v1/test-question', tqroutes);
 app.use('/api/v1/service-page', servicePagerouter);
 app.use('/api/v1/ear-test', medicalRoute);
+app.use('/api/v1/form-keys', vkeyroute);
 
 
 app.get('/', (req, res) => res.send('Hearzapp  Started'))
