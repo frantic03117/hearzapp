@@ -62,6 +62,23 @@ const schema = new Schema({
         ],
         default: []
     },
+    category_fee: [
+        {
+            category: {
+                type: Schema.Types.ObjectId,
+                ref: "Setting",
+                default: null
+            },
+            online_fee: {
+                type: Number,
+                default: null
+            },
+            offline_fee: {
+                type: Number,
+                default: null
+            }
+        }
+    ],
     ref_code: {
         type: String
     },

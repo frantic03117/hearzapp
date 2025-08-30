@@ -145,7 +145,14 @@ exports.update_profile = async (req, res) => {
             ...req.body
         }
         if (req.body.category) {
-            data['category'] = JSON.parse(req.body.category)
+            const ctg = JSON.parse(req.body.category);
+            data['category'] = ctg.map(itm => itm._id);
+            const parsedCategories = JSON.parse(req.body.category);
+            data['category_fee'] = parsedCategories.map(cat => ({
+                category: cat._id,
+                online_fee: cat.online_fee || 0,
+                offline_fee: cat.offline_fee || 0
+            }));
         }
 
         if (req.files?.profile_image) {
@@ -290,6 +297,8 @@ exports.store_profile = async (req, res) => {
         //         return res.json({ success: 0, message: "Mobile number is not verified" });
         //     }
         // }
+        // const ctg = JSON.parse(req.body.category);
+        // return res.json({ success: 0, message: ctg.map(itm => itm._id) })
         const isMobileExists = await User.findOne({ mobile: mobile });
         if (mobile.toString().length != 10) {
             return res.json({ success: 0, message: "Mobile is not valid" })
@@ -324,7 +333,14 @@ exports.store_profile = async (req, res) => {
             data['email'] = email.toLowerCase()
         }
         if (req.body.category) {
-            data['category'] = JSON.parse(req.body.category)
+            const ctg = JSON.parse(req.body.category);
+            data['category'] = ctg.map(itm => itm._id);
+            const parsedCategories = JSON.parse(req.body.category);
+            data['category_fee'] = parsedCategories.map(cat => ({
+                category: cat._id,
+                online_fee: cat.online_fee || 0,
+                offline_fee: cat.offline_fee || 0
+            }));
         }
         if (req.files) {
             if (req.files?.profile_image) {

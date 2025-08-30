@@ -115,7 +115,7 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         const skip = (page - 1) * perPage;
 
 
-        const doctors = await User.find(fdata).populate('category').populate('clinic').sort({ [sortField]: sortOrder }).skip(skip).limit(perPage);
+        const doctors = await User.find(fdata).populate('category').populate('category_fee.category').populate('clinic').sort({ [sortField]: sortOrder }).skip(skip).limit(perPage);
         const pagination = { perPage, page, totalPages, totalDocs }
         return res.json({ success: 1, message: "List of doctors", data: doctors, pagination, fdata, sortOrder })
     } catch (error) {
@@ -136,3 +136,23 @@ exports.handleDoctorVerify = async (req, res) => {
         return res.json({ success: 0, message: err.message })
     }
 }
+
+
+exports.deleteDoctor = async (req, res) => {
+    try {
+        if (req.user.role !== "Admin") {
+            return res.status(403).json({ success: 0, message: "Unauthorized" });
+        }
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: 0, message: "Invalid doctor ID" });
+        }
+        const doctor = await User.findOneAndDelete({ _id: id, role: "Doctor" });
+        if (!doctor) {
+            return res.status(404).json({ success: 0, message: "Doctor not found" });
+        }
+        return res.json({ success: 1, message: "Doctor deleted successfully", data: doctor });
+    } catch (error) {
+        return res.status(500).json({ success: 0, message: error.message });
+    }
+};
