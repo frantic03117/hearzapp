@@ -20,6 +20,12 @@ const schema = new Schema({
     },
     file: {
         type: String
+    },
+    short_description: String,
+    description: String,
+    isActive: {
+        type: Boolean,
+        default: true
     }
 }, { timestamps: true });
 

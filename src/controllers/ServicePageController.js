@@ -94,6 +94,32 @@ exports.getcategories = async (req, res) => {
     ]);
     return res.json({ success: 1, data: result })
 }
+exports.deletePage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const rsp = await ServicePage.findByIdAndDelete(id);
+
+        if (!rsp) {
+            return res.status(404).json({
+                success: 0,
+                message: "Page not found",
+            });
+        }
+
+        return res.json({
+            success: 1,
+            message: "Page deleted successfully",
+            data: rsp,
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            success: 0,
+            message: err.message,
+        });
+    }
+};
+
 
 
 

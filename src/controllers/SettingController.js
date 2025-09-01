@@ -25,10 +25,14 @@ exports.create_setting = async (req, res) => {
 }
 exports.get_setting = async (req, res) => {
     try {
-        const { type, title, parent, page = 1, perPage = 10 } = req.query;
+
+        const { id, type, title, parent, page = 1, perPage = 10 } = req.query;
         const fdata = {};
         if (type) {
             fdata['type'] = type;
+        }
+        if (id) {
+            fdata['_id'] = id;
         }
         if (title) {
             fdata['title'] = title;
@@ -67,3 +71,24 @@ exports.update_setting = async (req, res) => {
         return res.json({ success: 0, message: err.message })
     }
 }
+exports.update_activation = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const findSetting = await Setting.findById(id);
+
+        if (!findSetting) {
+            return res.status(404).json({ success: 0, message: "Not found" });
+        }
+
+        findSetting.isActive = !findSetting.isActive;
+        await findSetting.save();
+
+        return res.json({
+            success: 1,
+            message: "Updated successfully",
+            data: { id: findSetting._id, isActive: findSetting.isActive },
+        });
+    } catch (err) {
+        return res.status(500).json({ success: 0, message: err.message });
+    }
+};
