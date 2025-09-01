@@ -1,92 +1,142 @@
 const Slot = require("../models/Slot");
 const moment = require("moment-timezone");
 const User = require("../models/User");
+
+
 exports.create_slot = async (req, res) => {
     try {
-
-        const finduser = await User.findOne({ _id: req.user._id, });
-        if (!['Clinic', 'Doctor'].includes(finduser.role)) {
-            return res.status(403).json({ success: 0, message: "Only clinic can add slots", data: null })
-        }
-        const clinic_id = finduser.role == "Clinic" ? finduser._id : finduser.clinic;
-
-        // if (!findclinic) {
-        //     return res.json({ success: 0, message: "Only clinic can add slots", data: null })
-        // }
-        let { date, duration, gap, dayname, doctor } = req.body;
-        if (!doctor) {
-            if (finduser.role == "Doctor") {
-                doctor = finduser._id
-            }
-        }
-        if (!duration) {
-            return res.json({ success: 0, data: null, message: "Duration is mandatory." });
-        }
-        if (!gap) {
-            return res.json({ success: 0, data: null, message: "Gap is mandatory." });
-        }
-        if (!dayname) {
-            return res.json({ success: 0, data: null, message: "Dayname is mandatory." });
+        const finduser = await User.findOne({ _id: req.user._id });
+        if (!["Clinic", "Doctor"].includes(finduser.role)) {
+            return res
+                .status(403)
+                .json({ success: 0, message: "Only clinic or doctor can add slots" });
         }
 
-        const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const clinic_id =
+            finduser.role === "Clinic" ? finduser._id : finduser.clinic;
+
+        let { date, duration, gap, dayname, doctor, start_time, end_time } =
+            req.body;
+
+        if (!doctor && finduser.role === "Doctor") {
+            doctor = finduser._id;
+        }
+
+        if (!duration || !gap || !dayname || !start_time || !end_time) {
+            return res.json({
+                success: 0,
+                message: "Duration, gap, dayname, start_time, and end_time are required",
+                data: null,
+            });
+        }
+
+        // ✅ Validate dayname
+        const weekdays = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+        ];
         if (!weekdays.includes(dayname)) {
-            return res.json({ success: 0, data: null, message: "Please enter a correct dayname (e.g., Monday)." });
+            return res.json({
+                success: 0,
+                message: "Please enter a correct dayname (e.g., Monday).",
+                data: null,
+            });
         }
+
+        // ✅ Handle date if provided
         let slotDate = null;
         let weekdayName = dayname;
         if (date) {
             const parsedDate = new Date(date);
             if (isNaN(parsedDate)) {
-                return res.json({ success: 0, data: null, message: "Invalid date format." });
+                return res.json({ success: 0, message: "Invalid date format." });
             }
             weekdayName = weekdays[parsedDate.getDay()];
-            slotDate = moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate();
+            slotDate = moment
+                .tz(date, "Asia/Kolkata")
+                .startOf("day")
+                .utc()
+                .toDate();
         }
-        const slotsToSave = [];
-        const stime = req.body.start_time;
-        const etime = req.body.end_time;
-        const durationMins = parseInt(req.body.duration, 10);
-        const gapMins = parseInt(req.body.gap, 10);
-        const totalSlotStep = durationMins + gapMins;
-        let start = moment(stime, "HH:mm");
-        const end = moment(etime, "HH:mm");
-        while (start.clone().add(durationMins, 'minutes').isSameOrBefore(end)) {
-            const slotStartTime = start.format("HH:mm");
-            const slotEndTime = start.clone().add(durationMins, 'minutes').format("HH:mm");
 
-            const newSlot = {
-                doctor: doctor,
+        const durationMins = parseInt(duration, 10);
+        const gapMins = parseInt(gap, 10);
+        const totalStep = durationMins + gapMins;
+
+        // ✅ Normalize times into IST
+        let start = moment
+            .tz(start_time, ["HH:mm", moment.ISO_8601], "Asia/Kolkata")
+            .clone();
+        let end = moment
+            .tz(end_time, ["HH:mm", moment.ISO_8601], "Asia/Kolkata")
+            .clone();
+
+        if (!start.isBefore(end)) {
+            return res.status(400).json({
+                success: 0,
+                message: "start_time must be before end_time",
+            });
+        }
+
+        const slotsToSave = [];
+
+        while (start.clone().add(durationMins, "minutes").isSameOrBefore(end)) {
+            const slotStart = start.clone();
+            const slotEnd = slotStart.clone().add(durationMins, "minutes");
+
+            slotsToSave.push({
+                doctor,
                 clinic: clinic_id,
                 date: slotDate || null,
-                weekdayName: weekdayName,
-                start_time: slotStartTime,
-                end_time: slotEndTime,
+                weekdayName,
+                start_time: slotStart.format("HH:mm"),
+                end_time: slotEnd.format("HH:mm"),
                 status: "available",
                 createdAt: new Date(),
-                updatedAt: new Date()
-            };
-            slotsToSave.push(newSlot);
-            start = start.clone().add(totalSlotStep, 'minutes');
+                updatedAt: new Date(),
+            });
+
+            // Move forward by duration + gap
+            start = slotEnd.clone().add(gapMins, "minutes");
         }
 
-        if (slotsToSave.length > 0) {
-            const de_dat = { clinic: clinic_id, weekdayName, doctor: doctor, date: null };
-            await Slot.deleteMany(de_dat);
-            await Slot.insertMany(slotsToSave);
+        if (slotsToSave.length === 0) {
+            return res.json({
+                success: 0,
+                message: "No valid slots generated.",
+                data: null,
+            });
         }
+
+        // ✅ Remove existing overlapping slots for doctor + clinic + day/date
+        const deleteFilter = {
+            clinic: clinic_id,
+            doctor,
+            weekdayName,
+            date: slotDate || null,
+        };
+        await Slot.deleteMany(deleteFilter);
+
+        // ✅ Insert new slots
+        const savedSlots = await Slot.insertMany(slotsToSave);
+
         return res.status(201).json({
             success: 1,
             message: "Slots created successfully.",
-            total_slots: slotsToSave.length,
-            data: slotsToSave
+            total_slots: savedSlots.length,
+            data: savedSlots,
         });
     } catch (err) {
-        return res.json({ success: 0, message: err.message, data: null })
+        console.error("Error creating slots:", err);
+        return res.status(500).json({ success: 0, message: err.message });
     }
-
-
 };
+
 exports.get_slot = async (req, res) => {
     try {
         // const tdat = "2025-06-13";

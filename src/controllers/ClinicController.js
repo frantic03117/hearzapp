@@ -133,7 +133,7 @@ exports.store_profile = async (req, res) => {
 
 exports.get_clinics = async (req, res) => {
     try {
-        const { category, page = 1, perPage = 10, id, url } = req.query;
+        const { category, state, city, page = 1, perPage = 10, id, url } = req.query;
         const fdata = {
             role: "Clinic",
 
@@ -148,6 +148,12 @@ exports.get_clinics = async (req, res) => {
         if (category) {
             const findsetting = await Setting.find({ _id: { $in: category.split(',') } });
             fdata['category'] = { $in: findsetting.map(itm => itm._id) };
+        }
+        if (state) {
+            fdata['state'] = { $regex: state, $options: "i" }
+        }
+        if (city) {
+            fdata['city'] = { $in: city.split(',') }
         }
         let project = {
             password: 0,
