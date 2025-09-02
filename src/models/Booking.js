@@ -18,6 +18,11 @@ const bookingSchema = new Schema({
     bill_no: {
         type: String
     },
+    service: {
+        type: Schema.Types.ObjectId,
+        ref: "Setting",
+        default: null
+    },
     user: {
         type: Schema.Types.ObjectId,
         ref: "User",
