@@ -3,7 +3,6 @@ const User = require("../models/User");
 
 exports.startTest = async (req, res) => {
     try {
-        console.log(req.user);
         const { for_self } = req.body;
         if (!['Yes', 'No'].includes(for_self)) {
             return res.json({ success: 0, message: "for_self must be either Yes or No" });
@@ -89,6 +88,8 @@ exports.updateEarTest = async (req, res) => {
 exports.medicaltests = async (req, res) => {
     try {
         const fdata = {};
+        fdata.left_ear = { $exists: true, $not: { $size: 0 } };
+        fdata.right_ear = { $exists: true, $not: { $size: 0 } };
         if (req.user) {
             if (req.user.role == "User") {
                 fdata['user'] = req.user._id;
@@ -99,7 +100,7 @@ exports.medicaltests = async (req, res) => {
                 path: "user",
                 select: "name email mobile profile_image"
             }
-        ]);
+        ]).sort({ createdAt: -1 })
         return res.json({ success: 1, message: "Medical Tests", data: resp })
     } catch (err) {
         return res.status(500).json({ success: 0, message: "Server error", error: err.message });

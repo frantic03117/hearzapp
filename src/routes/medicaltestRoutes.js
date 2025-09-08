@@ -3,7 +3,7 @@ const { medicaltests, startTest, updateEarTest } = require("../controllers/Medic
 const { Auth } = require("../middleware/Auth");
 
 const router = Router();
-router.get('/', medicaltests);
+router.get('/', Auth, medicaltests);
 router.post('/', Auth, startTest);
 router.put('/ear-update/:id', Auth, updateEarTest);
 module.exports = router;

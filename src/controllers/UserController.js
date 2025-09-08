@@ -3,6 +3,7 @@ const OtpModel = require("../models/Otp");
 const DoctorSpecialization = require("../models/DoctorSpecialization");
 const SECRET_KEY = process.env.SECRET_KEY ?? "frantic@hearzapp#6887";
 const jwt = require('jsonwebtoken');
+const { default: mongoose } = require("mongoose");
 async function generateUniqueSlug(name) {
     const baseSlug = name
         .toLowerCase()
@@ -205,42 +206,65 @@ exports.update_profile = async (req, res) => {
 }
 exports.user_list = async (req, res) => {
     try {
-
-        // const admin = await User.create({ name: "Admin", email: "admin@refresh.com", mobile: "9089898989", password: "Admin@123#", role: "Admin" });
-        // console.log(admin);
-        // const allusers = await User.find().lean();
-        // allusers.map(async usr => {
-
-        //     const udata = {
-        //         profession: "Psychiatrist"
-        //     }
-        //     await User.updateMany({ _id: usr._id }, { $set: udata })
-        // })
         const fdata = {
-            role: { $nin: ['Admin', 'Employee'] }
+            role: { $nin: ["Admin", "Employee"] },
+            is_deleted: false
         };
-        const { type, keyword, exportdata, status, id, url, longitude, latitude, maxDistance = 5000, page = 1, perPage = 10, sort = "updatedAt", order } = req.query;
+
+        const {
+            type,
+            keyword,
+            exportdata,
+            status,
+            id,
+            url,
+            longitude,
+            latitude,
+            maxDistance = 5000,
+            page = 1,
+            perPage = 10,
+            sort = "updatedAt",
+            order,
+            name,
+            email,
+            mobile,
+            createdFrom,
+            createdTo,
+            hasAppointments,
+            noAppointments,
+            hasMedicalTest,
+            noMedicalTest,
+        } = req.query;
+
         if (longitude && latitude) {
-            fdata['coordinates'] = {
+            fdata["coordinates"] = {
                 $near: {
-                    $geometry: { type: "Point", coordinates: [parseFloat(longitude), parseFloat(latitude)] },
-                    $maxDistance: parseInt(maxDistance) // Max distance in meters
-                }
-            }
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [parseFloat(longitude), parseFloat(latitude)],
+                    },
+                    $maxDistance: parseInt(maxDistance),
+                },
+            };
         }
+
         const skip = (page - 1) * perPage;
+
         if (type) {
-            fdata['role'] = { $regex: type, $options: "i" };
+            fdata["role"] = { $regex: type, $options: "i" };
         }
+
         if (id) {
-            fdata['_id'] = id;
+            fdata["_id"] = new mongoose.Types.ObjectId(id);
         }
+
         if (url) {
-            fdata['slug'] = url;
+            fdata["slug"] = url;
         }
+
         if (req.user) {
             if (req.user.role == "Clinic") {
-                fdata['clinic'] = req.user._id
+                fdata["clinic"] = req.user._id;
             }
         }
 
@@ -254,28 +278,120 @@ exports.user_list = async (req, res) => {
                 delete fdata.clinic;
             }
         }
-        const resp = await User.find(fdata).sort({ created_at: -1 }).skip(skip).limit(perPage);
+
+        // 🔹 Extra filters from Drawer
+        if (name) {
+            fdata["name"] = { $regex: name, $options: "i" };
+        }
+        if (email) {
+            fdata["email"] = { $regex: email, $options: "i" };
+        }
+        if (mobile) {
+            fdata["mobile"] = { $regex: mobile, $options: "i" };
+        }
+        if (createdFrom || createdTo) {
+            fdata["createdAt"] = {};
+            if (createdFrom) {
+                fdata["createdAt"]["$gte"] = new Date(createdFrom);
+            }
+            if (createdTo) {
+                fdata["createdAt"]["$lte"] = new Date(createdTo);
+            }
+        }
+
+        const resp = await User.aggregate([
+            { $match: fdata },
+            { $sort: { created_at: -1 } },
+            { $skip: skip },
+            { $limit: parseInt(perPage) },
+            {
+                $lookup: {
+                    from: "medicaltests",
+                    localField: "_id",
+                    foreignField: "user",
+                    as: "medicalTests",
+                },
+            },
+            {
+                $lookup: {
+                    from: "bookings",
+                    let: { userId: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$user", "$$userId"] },
+                                        { $ne: ["$status", "Cancelled"] },
+                                        { $eq: ["$payment_status", "Success"] },
+                                    ],
+                                },
+                            },
+                        },
+                    ],
+                    as: "appointments",
+                },
+            },
+            {
+                $lookup: {
+                    from: "carts",
+                    let: { userId: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$user", "$$userId"] },
+                                        { $eq: ["$is_ordered", "Ordered"] },
+                                    ],
+                                },
+                            },
+                        },
+                    ],
+                    as: "orders",
+                },
+            },
+            // 🔹 Apply "has/no appointments" and "has/no medical tests"
+            ...(hasAppointments === "true"
+                ? [{ $match: { appointments: { $ne: [] } } }]
+                : []),
+            ...(noAppointments === "true"
+                ? [{ $match: { appointments: { $size: 0 } } }]
+                : []),
+            ...(hasMedicalTest === "true"
+                ? [{ $match: { medicalTests: { $ne: [] } } }]
+                : []),
+            ...(noMedicalTest === "true"
+                ? [{ $match: { medicalTests: { $size: 0 } } }]
+                : []),
+        ]);
 
         const totaldocs = await User.countDocuments(fdata);
-        const totalPage = Math.ceil(totaldocs / perPage); // Calculate total pages
+        const totalPage = Math.ceil(totaldocs / perPage);
         const pagination = {
-            page: page,
-            perPage,
+            page: parseInt(page),
+            perPage: parseInt(perPage),
             totalPages: totalPage,
-            totalDocs: totaldocs
+            totalDocs: totaldocs,
         };
-        return res.json({ success: 1, message: "list of users", data: resp, pagination, fdata });
 
+        return res.json({
+            success: 1,
+            message: "list of users",
+            data: resp,
+            pagination,
+            fdata,
+        });
     } catch (err) {
         return res.json({
-            errors: [{ 'message': err.message }],
+            errors: [{ message: err.message }],
             success: 0,
             data: [],
-            message: err.message
-        })
+            message: err.message,
+        });
     }
+};
 
-}
 exports.store_profile = async (req, res) => {
     try {
         const fields = ['mobile', 'name'];
@@ -431,3 +547,40 @@ exports.my_profile = async (req, res) => {
     const userfind = await User.findOne({ _id: user_id });
     return res.json({ data: userfind, success: 1, message: "Profile" })
 }
+exports.delete_user = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({ success: 0, message: "User ID is required" });
+        }
+
+        // Find the user first
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ success: 0, message: "User not found" });
+        }
+
+        // Soft delete: move email & mobile to deleted_user and mark is_deleted
+        const resp = await User.findByIdAndUpdate(
+            id,
+            {
+                $set: {
+                    is_deleted: true,
+
+                    email: "deleted_".user?.email,   // remove original fields
+                    mobile: "deleted_".user?.mobile
+                }
+            },
+            { new: true }
+        );
+
+        return res.json({
+            success: 1,
+            message: "User deleted successfully",
+            data: resp
+        });
+    } catch (err) {
+        return res.status(500).json({ success: 0, message: err.message });
+    }
+};
