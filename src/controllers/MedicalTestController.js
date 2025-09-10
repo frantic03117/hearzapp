@@ -88,6 +88,10 @@ exports.updateEarTest = async (req, res) => {
 exports.medicaltests = async (req, res) => {
     try {
         const fdata = {};
+        const { id } = req.query;
+        if (id) {
+            fdata['_id'] = id;
+        }
         fdata.left_ear = { $exists: true, $not: { $size: 0 } };
         fdata.right_ear = { $exists: true, $not: { $size: 0 } };
         if (req.user) {
