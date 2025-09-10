@@ -8,9 +8,9 @@ exports.createOrUpdateAttempt = async (req, res) => {
         if (req.user.role != "User") {
             return res.status(403).json({ success: 0, message: "Unauthorized" })
         }
-        if (!test_name) return res.status(400).json({ error: "test_name is required" });
+        if (!test_name) return res.status(400).json({ data: null, success: 0, message: "test_name is required" });
 
-        if (!question) return res.status(400).json({ error: "question is required" });
+        if (!question) return res.status(400).json({ data: null, success: 0, message: "question is required" });
 
         // Check question belongs to same test_name
         const q = await TestQuestion.findById(question);
