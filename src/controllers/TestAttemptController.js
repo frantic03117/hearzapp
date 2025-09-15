@@ -49,7 +49,7 @@ exports.createOrUpdateAttempt = async (req, res) => {
         });
 
         await attempt.save();
-        res.status(201).json({ message: "Answer saved", attempt });
+        res.status(201).json({ message: "Answer saved", data: attempt, success: 1 });
 
     } catch (err) {
         res.status(400).json({ error: err.message });
