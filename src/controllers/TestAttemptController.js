@@ -36,7 +36,7 @@ exports.createOrUpdateAttempt = async (req, res) => {
             attempt.isCorrect = null;
             attempt.score = 0;
             await attempt.save();
-            return res.status(200).json({ message: "Answer updated", attempt });
+            return res.status(200).json({ message: "Answer updated", data: attempt, success: 1 });
         }
 
         // Otherwise create new attempt
@@ -97,6 +97,7 @@ exports.getAttempts = async (req, res) => {
         const total = await TestAttempt.countDocuments(filter);
 
         res.json({
+            success: 1,
             total,
             page: parseInt(page),
             perPage: parseInt(perPage),
@@ -119,7 +120,7 @@ exports.updateAttempt = async (req, res) => {
             { new: true }
         );
         if (!attempt) return res.status(404).json({ error: "Attempt not found" });
-        res.json(attempt);
+        res.json({ data: attempt, success: 1, message: "Uppated Test" });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -138,7 +139,7 @@ exports.deleteAttempt = async (req, res) => {
         }
 
         await attempt.deleteOne();
-        res.json({ message: "Attempt deleted successfully" });
+        res.json({ message: "Attempt deleted successfully", success: 1 });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
