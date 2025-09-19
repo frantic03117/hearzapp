@@ -1,6 +1,7 @@
 const Slot = require("../models/Slot");
 const moment = require("moment-timezone");
 const User = require("../models/User");
+const Booking = require("../models/Booking");
 
 
 exports.create_slot = async (req, res) => {
@@ -224,7 +225,7 @@ exports.get_slot = async (req, res) => {
         // return res.json({ slots });
         const today = moment(date).tz('Asia/Kolkata').format('YYYY-MM-DD');
 
-        const formattedSlots = slots.map(slot => {
+        const formattedSlots = await Promise.all(slots.map(async slot => {
             const startTime = moment.tz(`${today} ${slot.start_time}`, 'YYYY-MM-DD HH:mm', 'Asia/Kolkata')
                 .format('YYYY-MM-DD HH:mm');
             const endTime = moment.tz(`${today} ${slot.end_time}`, 'YYYY-MM-DD HH:mm', 'Asia/Kolkata')
@@ -240,9 +241,10 @@ exports.get_slot = async (req, res) => {
                 end_time: endTime,
                 fdata,
                 status: blockedSlot ? 'blocked' : slot.status || 'available',
+                booking: blockedSlot ? await Booking.findOne({ booked_slot: blockedSlot._id }) : null,
                 blocked_id: blockedSlot ? blockedSlot._id : null
             };
-        });
+        }));
         return res.json({
             success: 1,
             message: "Available slots fetched successfully",
@@ -348,6 +350,10 @@ exports.block_slot = async (req, res) => {
 exports.unblock_slot = async (req, res) => {
     try {
         const { blocked_id } = req.body;
+        const findBooking = await Booking.findOne({ booked_slot: blocked_id });
+        if (findBooking) {
+            return res.status(500).json({ success: 0, message: "Booking exists" })
+        }
         const resp = await Slot.deleteOne({ _id: blocked_id });
         return res.json({ success: 1, message: "Deleted successfully" })
     } catch (err) {
