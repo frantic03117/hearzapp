@@ -4,17 +4,29 @@ const User = require("../models/User");
 const Booking = require("../models/Booking");
 
 
-exports.create_slot = async (req, res) => {
+exports.create_slot_old = async (req, res) => {
     try {
         const finduser = await User.findOne({ _id: req.user._id });
-        if (!["Clinic", "Doctor"].includes(finduser.role)) {
+        if (!["Clinic", "Doctor", "Admin"].includes(finduser.role)) {
             return res
                 .status(403)
                 .json({ success: 0, message: "Only clinic or doctor can add slots" });
         }
+        let clinic_id;
 
-        const clinic_id =
-            finduser.role === "Clinic" ? finduser._id : finduser.clinic;
+        if (req.user.role == "Admin") {
+            clinic_id = req.body.clinic_id
+        } else {
+            clinic_id =
+                finduser.role === "Clinic" ? finduser._id : finduser.clinic;
+        }
+        const isValidClinic = await User.findOne({ _id: clinic_id, role: "Clinic" });
+        if (!isValidClinic) {
+            return res
+                .status(403)
+                .json({ clinic_id, success: 0, message: "Invalid clinic id", data: isValidClinic, clinic_id });
+        }
+
 
         let { date, duration, gap, dayname, doctor, start_time, end_time } =
             req.body;
@@ -137,6 +149,179 @@ exports.create_slot = async (req, res) => {
         return res.status(500).json({ success: 0, message: err.message });
     }
 };
+exports.create_slot = async (req, res) => {
+    try {
+        const finduser = await User.findOne({ _id: req.user._id });
+        if (!["Clinic", "Doctor", "Admin"].includes(finduser.role)) {
+            return res
+                .status(403)
+                .json({ success: 0, message: "Only clinic, doctor or admin can add slots" });
+        }
+
+        let {
+            date, duration, gap, dayname,
+            start_time, end_time,
+            applyAllDoctors = false, applyAllClinicAllDoctors = false,
+            clinic_id
+        } = req.body;
+
+        // ✅ For Clinic users, override clinic_id
+        if (finduser.role === "Clinic") {
+            clinic_id = finduser._id;
+        }
+
+        // ✅ Validate required fields
+        if (!duration || !gap || !dayname || !start_time || !end_time) {
+            return res.json({
+                success: 0,
+                message: "Duration, gap, dayname, start_time, and end_time are required",
+            });
+        }
+
+        // ✅ Normalize dayname to array
+        const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const dayList = Array.isArray(dayname) ? dayname : [dayname];
+        for (const day of dayList) {
+            if (!weekdays.includes(day)) {
+                return res.json({
+                    success: 0,
+                    message: `Invalid dayname: ${day}. Must be one of ${weekdays.join(", ")}`,
+                });
+            }
+        }
+
+        // ✅ Handle optional date
+        let slotDate = null;
+        if (date) {
+            const parsedDate = new Date(date);
+            if (isNaN(parsedDate)) {
+                return res.json({ success: 0, message: "Invalid date format." });
+            }
+            slotDate = moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate();
+        }
+
+        const durationMins = parseInt(duration, 10);
+        const gapMins = parseInt(gap, 10);
+
+        let targetDoctors = [];
+
+        // ✅ Mode 1: Apply to all doctors in one clinic
+        if (applyAllDoctors) {
+            if (!clinic_id) {
+                return res.json({
+                    success: 0,
+                    message: "clinic_id is required when applyAllDoctors = true",
+                });
+            }
+            targetDoctors = await User.find({ clinic: clinic_id, role: "Doctor" }, { _id: 1, clinic: 1 });
+        }
+
+        // ✅ Mode 2: Apply to all doctors of all clinics
+        else if (applyAllClinicAllDoctors) {
+            targetDoctors = await User.find({ role: "Doctor" }, { _id: 1, clinic: 1 });
+        }
+
+        // ✅ Mode 3: Apply for current doctor only
+        else if (!applyAllDoctors && !applyAllClinicAllDoctors && finduser.role === "Doctor") {
+            targetDoctors = [{ _id: finduser._id, clinic: finduser.clinic }];
+        }
+
+        else if (!applyAllDoctors && !applyAllClinicAllDoctors && finduser.role === "Clinic") {
+            if (!req.body.doctor) {
+                return res.json({ success: 0, message: "No doctor found" })
+            }
+            targetDoctors = await User.find({ clinic: finduser._id, role: "Doctor", _id: req.body.doctor }, { _id: 1, clinic: 1 });
+        }
+
+        else if (!applyAllDoctors && !applyAllClinicAllDoctors && finduser.role === "Admin") {
+            if (!req.body.doctor) {
+                return res.json({ success: 0, message: "No doctor found" })
+            }
+            targetDoctors = await User.find({ clinic: clinic_id, role: "Doctor", _id: req.body.doctor }, { _id: 1, clinic: 1 });
+        }
+
+        else {
+            return res.json({
+                success: 0,
+                message: "Please enable applyAllDoctors or applyAllClinicAllDoctors, or be a Doctor.",
+            });
+        }
+
+        if (targetDoctors.length == 0) {
+            return res.json({
+                success: 0,
+                message: "Doctors not found",
+            });
+        }
+        const allSlotsToSave = [];
+
+        // ✅ Generate slots per doctor & per day
+        for (const doc of targetDoctors) {
+            for (const weekdayName of dayList) {
+                let start = moment.tz(start_time, ["HH:mm", moment.ISO_8601], "Asia/Kolkata").clone();
+                let end = moment.tz(end_time, ["HH:mm", moment.ISO_8601], "Asia/Kolkata").clone();
+
+                if (!start.isBefore(end)) {
+                    return res.status(400).json({
+                        success: 0,
+                        message: "start_time must be before end_time",
+                    });
+                }
+
+                while (start.clone().add(durationMins, "minutes").isSameOrBefore(end)) {
+                    const slotStart = start.clone();
+                    const slotEnd = slotStart.clone().add(durationMins, "minutes");
+
+                    allSlotsToSave.push({
+                        doctor: doc._id,
+                        clinic: doc.clinic || clinic_id,
+                        date: slotDate || null,
+                        weekdayName,
+                        start_time: slotStart.format("HH:mm"),
+                        end_time: slotEnd.format("HH:mm"),
+                        status: "available",
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    });
+
+                    start = slotEnd.clone().add(gapMins, "minutes");
+                }
+
+                // ✅ Remove old slots for this doctor + clinic + day
+                const deleteFilter = {
+                    clinic: doc.clinic || clinic_id,
+                    doctor: doc._id,
+                    weekdayName,
+                    date: slotDate || null,
+                };
+                await Slot.deleteMany(deleteFilter);
+            }
+        }
+
+        if (allSlotsToSave.length === 0) {
+            return res.json({
+                success: 0,
+                message: "No valid slots generated.",
+            });
+        }
+
+        // ✅ Insert new slots
+        const savedSlots = await Slot.insertMany(allSlotsToSave);
+
+        return res.status(201).json({
+            success: 1,
+            message: `Slots created successfully for ${targetDoctors.length} doctor(s).`,
+            total_slots: savedSlots.length,
+            data: savedSlots,
+        });
+
+    } catch (err) {
+        console.error("Error creating slots:", err);
+        return res.status(500).json({ success: 0, message: err.message });
+    }
+};
+
+
 
 exports.get_slot = async (req, res) => {
     try {
@@ -257,21 +442,22 @@ exports.get_slot = async (req, res) => {
 };
 exports.mark_holiday = async (req, res) => {
     try {
-        const clinic_id = req.user._id;
-        const findclinic = await User.findOne({ _id: clinic_id, role: "Clinic" });
-        if (!findclinic) {
-            return res.json({ success: 0, message: "Only clinic can add slots", data: null })
-        }
-        const { date, doctor } = req.body;
+        // const clinic_id = req.user._id;
+        // const findclinic = await User.findOne({ _id: clinic_id, role: "Clinic" });
+        // if (!findclinic) {
+        //     return res.json({ success: 0, message: "Only clinic can add slots", data: null })
+        // }
+        const { date, clinic, doctor } = req.body;
         if (!date) {
             return res.json({ success: 0, message: "date is required", data: null })
         }
         const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const parsedDate = new Date(date);
         const weekdayname = weekdays[parsedDate.getDay()];
+
         const blockdata = {
             weekdayName: weekdayname,
-            clinic: clinic_id,
+            clinic: clinic,
             doctor: doctor,
             status: "blocked",
             isHoliday: true,
@@ -279,7 +465,7 @@ exports.mark_holiday = async (req, res) => {
             createdAt: new Date()
         }
         const isAlreadyBlocked = await Slot.findOne({
-            clinic: clinic_id,
+            clinic: clinic,
             doctor: doctor,
             status: "blocked",
             isHoliday: true,

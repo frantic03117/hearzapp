@@ -88,25 +88,92 @@ exports.updateEarTest = async (req, res) => {
 exports.medicaltests = async (req, res) => {
     try {
         const fdata = {};
-        const { id } = req.query;
+        const {
+            id,
+            created_from,
+            created_to,
+            user,
+            status,
+            for_self,
+            page = 1,
+            limit = 10
+        } = req.query;
+
+        // Filter by id
         if (id) {
             fdata['_id'] = id;
         }
+
+        // Only return if both ears exist and not empty
         fdata.left_ear = { $exists: true, $not: { $size: 0 } };
         fdata.right_ear = { $exists: true, $not: { $size: 0 } };
-        if (req.user) {
-            if (req.user.role == "User") {
-                fdata['user'] = req.user._id;
+
+        // Filter by user explicitly (if provided)
+        if (user) {
+            fdata['user'] = user;
+        }
+
+        // If logged-in user is "User" role, restrict to their own data
+        if (req.user && req.user.role === "User") {
+            fdata['user'] = req.user._id;
+        }
+
+        // Filter by status
+        if (status) {
+            fdata['status'] = status;
+        }
+
+        // Filter by for_self
+        if (for_self) {
+            fdata['for_self'] = for_self; // "Yes" or "No"
+        }
+
+        // Date range filter
+        if (created_from || created_to) {
+            fdata.createdAt = {};
+            if (created_from) {
+                fdata.createdAt.$gte = new Date(created_from);
+            }
+            if (created_to) {
+                fdata.createdAt.$lte = new Date(created_to);
             }
         }
-        const resp = await MedicalTest.find(fdata).populate([
-            {
-                path: "user",
-                select: "name email mobile profile_image"
-            }
-        ]).sort({ createdAt: -1 })
-        return res.json({ success: 1, message: "Medical Tests", data: resp })
+
+        // Pagination setup
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Count total records (before pagination)
+        const total = await MedicalTest.countDocuments(fdata);
+
+        // Fetch data with pagination
+        const resp = await MedicalTest.find(fdata)
+            .populate([
+                {
+                    path: "user",
+                    select: "name email mobile profile_image",
+                },
+            ])
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        return res.status(200).json({
+            success: 1,
+            message: "Medical Tests",
+            data: resp,
+            fdata,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit),
+            },
+        });
     } catch (err) {
-        return res.status(500).json({ success: 0, message: "Server error", error: err.message });
+        return res.status(500).json({
+            success: 0,
+            message: "Server error",
+            error: err.message,
+        });
     }
-}
+};

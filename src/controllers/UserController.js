@@ -145,6 +145,9 @@ exports.update_profile = async (req, res) => {
         const data = {
             ...req.body
         }
+        if (req.body.mode) {
+            data['mode'] = JSON.parse(req.body.mode)
+        }
         if (req.body.category) {
             const ctg = JSON.parse(req.body.category);
             data['category'] = ctg.map(itm => itm._id);
@@ -298,12 +301,23 @@ exports.user_list = async (req, res) => {
                 fdata["createdAt"]["$lte"] = new Date(createdTo);
             }
         }
+        const matchPipeline = [
+            ...(hasAppointments === "true"
+                ? [{ $match: { appointments: { $ne: [] } } }]
+                : []),
+            ...(noAppointments === "true"
+                ? [{ $match: { appointments: { $size: 0 } } }]
+                : []),
+            ...(hasMedicalTest === "true"
+                ? [{ $match: { medicalTests: { $ne: [] } } }]
+                : []),
+            ...(noMedicalTest === "true"
+                ? [{ $match: { medicalTests: { $size: 0 } } }]
+                : []),
+        ];
 
         const resp = await User.aggregate([
             { $match: fdata },
-            { $sort: { created_at: -1 } },
-            { $skip: skip },
-            { $limit: parseInt(perPage) },
             {
                 $lookup: {
                     from: "medicaltests",
@@ -351,20 +365,78 @@ exports.user_list = async (req, res) => {
                     as: "orders",
                 },
             },
-            // 🔹 Apply "has/no appointments" and "has/no medical tests"
-            ...(hasAppointments === "true"
-                ? [{ $match: { appointments: { $ne: [] } } }]
-                : []),
-            ...(noAppointments === "true"
-                ? [{ $match: { appointments: { $size: 0 } } }]
-                : []),
-            ...(hasMedicalTest === "true"
-                ? [{ $match: { medicalTests: { $ne: [] } } }]
-                : []),
-            ...(noMedicalTest === "true"
-                ? [{ $match: { medicalTests: { $size: 0 } } }]
-                : []),
+            ...matchPipeline, // ✅ Filtering first
+            { $sort: { created_at: -1 } },
+            { $skip: skip },
+            { $limit: parseInt(perPage) },
         ]);
+
+
+        // const resp = await User.aggregate([
+        //     { $match: fdata },
+        //     { $sort: { created_at: -1 } },
+        //     { $skip: skip },
+        //     { $limit: parseInt(perPage) },
+        //     {
+        //         $lookup: {
+        //             from: "medicaltests",
+        //             localField: "_id",
+        //             foreignField: "user",
+        //             as: "medicalTests",
+        //         },
+        //     },
+        //     {
+        //         $lookup: {
+        //             from: "bookings",
+        //             let: { userId: "$_id" },
+        //             pipeline: [
+        //                 {
+        //                     $match: {
+        //                         $expr: {
+        //                             $and: [
+        //                                 { $eq: ["$user", "$$userId"] },
+        //                                 { $ne: ["$status", "Cancelled"] },
+        //                                 { $eq: ["$payment_status", "Success"] },
+        //                             ],
+        //                         },
+        //                     },
+        //                 },
+        //             ],
+        //             as: "appointments",
+        //         },
+        //     },
+        //     {
+        //         $lookup: {
+        //             from: "carts",
+        //             let: { userId: "$_id" },
+        //             pipeline: [
+        //                 {
+        //                     $match: {
+        //                         $expr: {
+        //                             $and: [
+        //                                 { $eq: ["$user", "$$userId"] },
+        //                                 { $eq: ["$is_ordered", "Ordered"] },
+        //                             ],
+        //                         },
+        //                     },
+        //                 },
+        //             ],
+        //             as: "orders",
+        //         },
+        //     },          
+        //     ...(hasAppointments === "true"
+        //         ? [{ $match: { appointments: { $ne: [] } } }]
+        //         : []),
+        //     ...(noAppointments === "true"
+        //         ? [{ $match: { appointments: { $size: 0 } } }]
+        //         : []),
+        //     ...(hasMedicalTest === "true"
+        //         ? [{ $match: { medicalTests: { $ne: [] } } }]
+        //         : []),
+        //     ...(noMedicalTest === "true"
+        //         ? [{ $match: { medicalTests: { $size: 0 } } }]
+        //         : []),
+        // ]);
 
         const totaldocs = await User.countDocuments(fdata);
         const totalPage = Math.ceil(totaldocs / perPage);
@@ -440,7 +512,8 @@ exports.store_profile = async (req, res) => {
             custom_request_id: prefix + String(new_request_id).padStart(10, '0'),
             name: name,
             mobile: mobile,
-            role: role
+            role: role,
+            mode: JSON.parse(req.body.mode)
         }
         if (role == "Doctor") {
             data['clinic'] = req.body.clinic;

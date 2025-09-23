@@ -26,10 +26,10 @@ exports.create_setting = async (req, res) => {
 exports.get_setting = async (req, res) => {
     try {
 
-        const { id, type, title, parent, page = 1, perPage = 10 } = req.query;
+        const { id, type, title, media_value, parent, page = 1, perPage = 10 } = req.query;
         const fdata = {};
         if (type) {
-            fdata['type'] = type;
+            fdata['type'] = { $in: type.split(',') };
         }
         if (id) {
             fdata['_id'] = id;
@@ -39,6 +39,9 @@ exports.get_setting = async (req, res) => {
         }
         if (parent) {
             fdata['parent'] = parent;
+        }
+        if (media_value) {
+            fdata['media_value'] = media_value;
         }
         const resp = await Setting.find(fdata);
         return res.json({ success: 1, message: "Fetched successfully", data: resp })

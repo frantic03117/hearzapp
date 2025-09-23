@@ -5,7 +5,7 @@ exports.createTestQuestion = async (req, res) => {
     try {
         const newQuestion = new TestQuestion(req.body);
         const saved = await newQuestion.save();
-        res.status(201).json({success: 1, data: saved, message : "saved successfully"});
+        res.status(201).json({ success: 1, data: saved, message: "saved successfully" });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -14,11 +14,22 @@ exports.createTestQuestion = async (req, res) => {
 // READ ALL
 exports.getAllTestQuestions = async (req, res) => {
     try {
-        const questions = await TestQuestion.find().populate('test_name');
-        res.status(200).json({
-            data : questions,
-            message : "list of questions",
-            success:1
+        const { id, test_name, test_for } = req.query;
+        let fdata = {};
+        if (id) {
+            fdata['_id'] = id;
+        }
+        if (test_name) {
+            fdata['test_name'] = test_name;
+        }
+        if (test_for) {
+            fdata['test_for'] = test_for;
+        }
+        const questions = await TestQuestion.find(fdata).populate('test_name');
+        return res.status(200).json({
+            data: questions,
+            message: "list of questions",
+            success: 1
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -46,9 +57,9 @@ exports.updateTestQuestion = async (req, res) => {
         );
         if (!updated) return res.status(404).json({ message: "Not found" });
         res.status(200).json({
-            data : updated,
-            success:1, 
-            message : "updated successfully"
+            data: updated,
+            success: 1,
+            message: "updated successfully"
         });
     } catch (err) {
         res.status(400).json({ error: err.message });
