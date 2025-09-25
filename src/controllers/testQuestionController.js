@@ -106,6 +106,7 @@ exports.product_suggestion_filter_question = async (req, res) => {
                 const options = keyvalues.map(itm => itm.media_value);
                 return {
                     question: re.question,
+                    key: re.option_key?.key,
                     options
                 };
             })

@@ -98,8 +98,18 @@ exports.getProducts = async (req, res) => {
                 });
             }
 
+            // transform multi-value filters into $in
+            Object.keys(parsedFilters).forEach((key) => {
+                if (typeof parsedFilters[key] === "string" && parsedFilters[key].includes(",")) {
+                    parsedFilters[key] = {
+                        $in: parsedFilters[key].split(",").map((v) => v.trim())
+                    };
+                }
+            });
+
             fdata["variants"] = { $elemMatch: parsedFilters };
         }
+
         const totalDocs = await Product.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
