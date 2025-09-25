@@ -15,6 +15,11 @@ const schema = new Schema({
     question: {
         type: String
     },
+    option_key: {
+        type: Schema.Types.ObjectId,
+        ref: "VariantKey",
+        default: null
+    },
     options: [oschema],
 }, { timestamps: true });
 module.exports = new model('TestQuestion', schema);

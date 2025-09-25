@@ -95,3 +95,7 @@ exports.update_activation = async (req, res) => {
         return res.status(500).json({ success: 0, message: err.message });
     }
 };
+exports.getTypes = async (req, res) => {
+    const resp = await Setting.distinct("type");
+    return res.json({ success: 1, message: "Setting", data: resp });
+}

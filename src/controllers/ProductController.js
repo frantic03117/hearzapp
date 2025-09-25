@@ -79,13 +79,26 @@ exports.createProduct = async (req, res) => {
 // Get All Products
 exports.getProducts = async (req, res) => {
     try {
-        const { page = 1, perPage = 10, id, slug } = req.query;
+        const { page = 1, perPage = 10, id, slug, vfilters } = req.query;
         const fdata = {};
         if (id) {
             fdata['_id'] = id;
         }
         if (slug) {
             fdata['slug'] = slug
+        }
+        if (vfilters) {
+            let parsedFilters;
+            try {
+                parsedFilters = JSON.parse(vfilters);
+            } catch (e) {
+                return res.status(400).json({
+                    success: 0,
+                    message: "Invalid vfilters format, must be JSON",
+                });
+            }
+
+            fdata["variants"] = { $elemMatch: parsedFilters };
         }
         const totalDocs = await Product.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
