@@ -1,5 +1,7 @@
 const TestQuestion = require("../models/TestQuestion");
 const TestAttempt = require("../models/TestAttempt");
+const crypto = require("crypto");
+
 
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
@@ -144,3 +146,24 @@ exports.deleteAttempt = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+exports.getProductSuggestionQuestion = async (req, res) => {
+    const questions = require('../json/ProductSuggestion.json');
+    const { id, step, type, key } = req.query;
+
+    let fdata = {};
+    if (id) fdata.id = id;
+    if (step) fdata.step = parseInt(step, 10); // ensure step is a number
+    if (type) fdata.type = type;
+    if (key) fdata.key = key;
+
+    // If no filters provided, return all questions
+    let results = questions;
+    if (Object.keys(fdata).length > 0) {
+        results = questions.filter(q => {
+            return Object.entries(fdata).every(([k, v]) => q[k] === v);
+        });
+    }
+
+    return res.json({ success: 1, data: results });
+};
+

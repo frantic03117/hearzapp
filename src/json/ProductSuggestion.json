@@ -1,0 +1,467 @@
+[
+  {
+    "id": "cc3cbb98-7227-4761-85f4-18936be5a7ac",
+    "step": 1,
+    "hasFollowup": true,
+    "type": "main",
+    "question": "Do you have trouble hearing in:",
+    "key": "trouble_environment",
+    "options": [
+      {
+        "label": "Quiet environments only",
+        "key": "quiet"
+      },
+      {
+        "label": "Noisy environments only",
+        "key": "noisy"
+      },
+      {
+        "label": "Both quiet and noisy environments",
+        "key": "both"
+      }
+    ],
+    "options_type": "singleChoice"
+  },
+  {
+    "step": 1,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Do you attend gatherings, meetings, or restaurants often?",
+    "key": "attend_gathering",
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 1,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Do you primarily need hearing aids for conversations at home or work?",
+    "key": "primary_need_at",
+    "options": [
+      {
+        "label": "Home",
+        "key": "Home"
+      },
+      {
+        "label": "Work",
+        "key": "Work"
+      },
+      {
+        "label": "Both",
+        "key": "Both"
+      }
+    ],
+    "options_type": "singleChoice"
+  },
+  {
+    "id": "c1113096-bdbc-4bff-8651-0b1833acb29a",
+    "step": 2,
+    "hasFollowup": true,
+    "type": "main",
+    "question": "How would you describe your hearing loss?",
+    "key": "hearing_loss_level",
+    "options": [
+      {
+        "label": "Mild",
+        "key": "mild"
+      },
+      {
+        "label": "Moderate",
+        "key": "moderate"
+      },
+      {
+        "label": "Severe",
+        "key": "severe"
+      },
+      {
+        "label": "Unsure",
+        "key": "unsure"
+      }
+    ],
+    "options_type": "singleChoice"
+  },
+  {
+    "step": 2,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Would you like to schedule a hearing test to determine it accurately?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 2,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Are you comfortable with devices that are more visible but offer stronger amplification?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "id": "d0880e05-06b6-4509-82ec-a3809ff856c5",
+    "step": 3,
+    "hasFollowup": true,
+    "type": "main",
+    "question": "How active are you?",
+    "key": null,
+    "options": [
+      {
+        "label": "Mostly Home/Office)",
+        "key": "Low"
+      },
+      {
+        "label": "Social gatherings, Occasional outdoors",
+        "key": "Moderate"
+      },
+      {
+        "label": "Sports, Travel, Outdoor work",
+        "key": "High"
+      }
+    ],
+    "options_type": "singleChoice"
+  },
+  {
+    "step": 3,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Do you need water/sweat resistant devices?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 3,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Are you looking for small/invisible devices?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 3,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Do you prefer compact designs for convenience?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "id": "8ab8afbc-4793-434b-b68c-dc15a517cb56",
+    "step": 4,
+    "hasFollowup": true,
+    "type": "main",
+    "question": "Do you prefer a hearing aid that is:",
+    "key": null,
+    "options": [
+      {
+        "label": "Completely invisible (CIC)",
+        "key": "CIC"
+      },
+      {
+        "label": "Small and discreet (ITC/ITE)",
+        "key": "ITC/ITE"
+      },
+      {
+        "label": "Behind-the-ear (BTE) – visible but powerful",
+        "key": "BTE"
+      }
+    ],
+    "options_type": "singleChoice"
+  },
+  {
+    "step": 4,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Are you okay with devices that require more frequent battery changes?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 4,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Would you like rechargeable options?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 4,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Do you want features like Bluetooth connectivity and rechargeable batteries?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "id": "5b9b472d-4f78-4912-a81b-e5520d1f5d2e",
+    "step": 5,
+    "hasFollowup": true,
+    "type": "main",
+    "question": "Which features matter most to you?",
+    "key": null,
+    "options": [
+      {
+        "label": "Bluetooth connectivity (calls/music)",
+        "key": "calls_music"
+      },
+      {
+        "label": "Noise cancellation for noisy environments",
+        "key": "noice_cancellation"
+      },
+      {
+        "label": "Rechargeable battery",
+        "key": "rechargeable"
+      },
+      {
+        "label": "Tinnitus masking",
+        "key": "tinnitus"
+      },
+      {
+        "label": "Simple/basic use",
+        "key": "basic"
+      }
+    ],
+    "options_type": "multiChoice"
+  },
+  {
+    "step": 5,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Do you attend large gatherings often?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 5,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Do you use smartphones or audio devices frequently?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 5,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Do you prefer not to change batteries frequently?",
+    "key": null,
+    "options": [],
+    "options_type": "yesNo"
+  },
+  {
+    "id": "ee8dc59c-f192-4085-8dfa-c8558943a43e",
+    "step": 6,
+    "hasFollowup": true,
+    "type": "main",
+    "question": "What is your approximate budget?",
+    "key": null,
+    "options": ["Low", "Medium", "High"],
+    "options_type": "singleChoice"
+  },
+  {
+    "step": 6,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "We can suggest standard models with essential features. Is that acceptable?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 6,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Would you like mid-range devices with good tech and comfort?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "step": 6,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Are you interested in premium devices with advanced features & connectivity?",
+    "key": null,
+    "options": [
+      {
+        "label": "Yes",
+        "key": "yes"
+      },
+      {
+        "label": "No",
+        "key": "no"
+      }
+    ],
+    "options_type": "yesNo"
+  },
+  {
+    "id": "fc2a7c4d-4fb2-4c91-a760-22c5667999a1",
+    "step": 7,
+    "hasFollowup": true,
+    "type": "main",
+    "question": "How much support would you like for maintenance?",
+    "key": null,
+    "options": [
+      {
+        "label": "Self-managed",
+        "key": "Minimal"
+      },
+      {
+        "label": "Clinic visits occasionally",
+        "key": "Moderate"
+      },
+      {
+        "label": "Frequent follow-ups and support",
+        "key": "Maximum"
+      }
+    ],
+    "options_type": "singleChoice"
+  },
+  {
+    "step": 7,
+    "hasFollowup": false,
+    "type": "followup",
+    "question": "Would you prefer a device with remote troubleshooting or clinic-based support?",
+    "key": null,
+    "options": [
+      {
+        "label": "Remote troubleshooting",
+        "key": "Remote troubleshooting"
+      },
+      {
+        "label": "Clinic-based support",
+        "key": "Clinic-based support"
+      },
+      {
+        "label": "Both support",
+        "key": "Both support"
+      }
+    ],
+    "options_type": "singleChoice"
+  }
+]
