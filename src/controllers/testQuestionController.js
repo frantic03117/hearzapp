@@ -24,7 +24,7 @@ exports.getAllTestQuestions = async (req, res) => {
             fdata['test_name'] = test_name;
         }
         if (test_for) {
-            fdata['test_for'] = test_for;
+            fdata['test_for'] = { $regex: test_for, $options: i };
         }
         const questions = await TestQuestion.find(fdata).populate('test_name').populate('option_key')
         // Format response if needed
