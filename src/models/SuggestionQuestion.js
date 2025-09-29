@@ -13,6 +13,14 @@ const schema = new Schema({
         type: String,
         enum: ['Primary', 'Secondary']
     },
+    parent_question: {
+        type: Schema.Types.ObjectId,
+        ref: "SuggestionQuestion",
+        default: null
+    },
+    parent_answer: {
+        type: String
+    },
     question: {
         type: String
     },
