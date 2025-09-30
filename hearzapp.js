@@ -8,14 +8,11 @@ const https = require('https');
 const fs = require('fs');
 const cors = require('cors');
 require('dotenv').config();
-// const options = {
-//     key: fs.readFileSync('/etc/letsencrypt/live/packarts.in/privkey.pem', 'utf-8'),
-//     cert: fs.readFileSync('/etc/letsencrypt/live/packarts.in/fullchain.pem', 'utf-8'),
-// };
 const options = {
-    key: fs.readFileSync('./ssl/private.pem'),
-    cert: fs.readFileSync('./ssl/certificate.pem'),
+    key: fs.readFileSync('/etc/letsencrypt/live/packarts.in/privkey.pem', 'utf-8'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/packarts.in/fullchain.pem', 'utf-8'),
 };
+// csl
 const server = https.createServer(options, app);
 process.env.TZ = "Asia/Kolkata";
 const mongourl = "mongodb+srv://noreplycabs24:KkhHGcKLcnzppeLk@cluster0.at7dp.mongodb.net/hearzapp";
