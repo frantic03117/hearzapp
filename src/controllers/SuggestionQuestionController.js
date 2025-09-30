@@ -77,7 +77,83 @@ exports.save_attempt = async (req, res) => {
         answer,
         user
     }
-    const attempt = await SuggestionQuestionAttempt.create(qdata);
+    const findQuestion = await SuggestionQuestionAttempt.findOne({ user: user });
+    if (findQuestion) {
+        await SuggestionQuestionAttempt.findOneAndUpdate({ _id: findQuestion._id }, { $set: qdata });
+    } else {
+        await SuggestionQuestionAttempt.create(qdata);
+    }
 
-    return res.json({ success: 1, message: "question", data: next_question, findquestion, attempt })
+
+    return res.json({ success: 1, message: "question", data: next_question, findquestion })
 }
+exports.get_attempts = async (req, res) => {
+    try {
+        const { user, question } = req.query;
+        // Build match filter
+        const match = {};
+        if (user) match.user = new mongoose.Types.ObjectId(user);
+        if (question) match.question = new mongoose.Types.ObjectId(question);
+
+        const resp = await SuggestionQuestionAttempt.aggregate([
+            { $match: match },
+
+            // Populate user
+            {
+                $lookup: {
+                    from: "users", // collection name in MongoDB (check your DB, usually "users")
+                    localField: "user",
+                    foreignField: "_id",
+                    as: "user"
+                }
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+
+            // Populate question
+            {
+                $lookup: {
+                    from: "suggestionquestions", // collection name in MongoDB (usually lowercase + plural)
+                    localField: "question",
+                    foreignField: "_id",
+                    as: "question"
+                }
+            },
+            { $unwind: { path: "$question", preserveNullAndEmptyArrays: true } },
+
+            // Group by user
+            {
+                $group: {
+                    _id: "$user._id",
+                    user: { $first: "$user" },
+                    attempts: {
+                        $push: {
+                            question: "$question",
+                            answer: "$answer",
+                            createdAt: "$createdAt"
+                        }
+                    }
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            // Format output
+            {
+                $project: {
+                    _id: 0,
+                    user: {
+                        name: 1,
+                        mobile: 1,
+                        email: 1,
+                        profile_image: 1
+                    },
+                    attempts: 1
+                }
+            }
+
+        ]);
+
+        res.json({ data: resp, success: 1, message: "list of attemps" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: 0, message: "Something went wrong" });
+    }
+};
