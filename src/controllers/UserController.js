@@ -517,20 +517,21 @@ exports.store_profile = async (req, res) => {
         }
         if (role == "Doctor") {
             data['clinic'] = req.body.clinic;
+            if (req.body.category) {
+                const ctg = JSON.parse(req.body.category);
+                data['category'] = ctg.map(itm => itm._id);
+                const parsedCategories = JSON.parse(req.body.category);
+                data['category_fee'] = parsedCategories.map(cat => ({
+                    category: cat._id,
+                    online_fee: cat.online_fee || 0,
+                    offline_fee: cat.offline_fee || 0
+                }));
+            }
         }
         if (req.body.email) {
             data['email'] = email.toLowerCase()
         }
-        if (req.body.category) {
-            const ctg = JSON.parse(req.body.category);
-            data['category'] = ctg.map(itm => itm._id);
-            const parsedCategories = JSON.parse(req.body.category);
-            data['category_fee'] = parsedCategories.map(cat => ({
-                category: cat._id,
-                online_fee: cat.online_fee || 0,
-                offline_fee: cat.offline_fee || 0
-            }));
-        }
+
         if (req.files) {
             if (req.files?.profile_image) {
                 data['profile_image'] = req.files.profile_image[0].path
