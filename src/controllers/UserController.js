@@ -464,126 +464,233 @@ exports.user_list = async (req, res) => {
     }
 };
 
+// exports.store_profile = async (req, res) => {
+//     try {
+//         const fields = ['mobile', 'name'];
+//         const emptyFields = fields.filter(field => !req.body[field]);
+//         if (emptyFields.length > 0) {
+//             return res.json({ success: 0, message: 'The following fields are required:' + emptyFields.join(','), fields: emptyFields });
+//         }
+//         const { name, email, mobile, role = "User" } = req.body;
+//         if (!['Doctor', 'User'].includes(role)) {
+//             return res.json({ success: 0, message: "Invalid role type", data: null })
+//         }
+//         let slug = await generateUniqueSlug(req.body.name);
+//         if (req.body.city) {
+//             slug = role + "-" + slug + "-in-" + req.body.city;
+//         }
+//         // if (!req.user) {
+//         //     const checkIsMobileVerified = await OtpModel.findOne({ mobile: mobile, is_verified: true });
+//         //     if (!checkIsMobileVerified) {
+//         //         return res.json({ success: 0, message: "Mobile number is not verified" });
+//         //     }
+//         // }
+//         // const ctg = JSON.parse(req.body.category);
+//         // return res.json({ success: 0, message: ctg.map(itm => itm._id) })
+//         const isMobileExists = await User.findOne({ mobile: mobile });
+//         if (mobile.toString().length != 10) {
+//             return res.json({ success: 0, message: "Mobile is not valid" })
+//         }
+//         if (isMobileExists) {
+//             return res.json({
+//                 errors: [{ 'message': "Mobile is already in use" }],
+//                 success: 0,
+//                 data: [],
+//                 message: "Mobile is already in use"
+//             })
+//         }
+//         const lastReuest = await User.findOne({ role }).sort({ request_id: -1 });
+//         let new_request_id = 1;
+//         if (lastReuest) {
+//             new_request_id = lastReuest.request_id + 1
+//         }
+//         const prefix = role == "User" ? 'USER' : 'DOCTOR';
+//         const data = {
+//             ...req.body,
+//             slug: slug.toLowerCase(),
+//             request_id: new_request_id,
+//             custom_request_id: prefix + String(new_request_id).padStart(10, '0'),
+//             name: name,
+//             mobile: mobile,
+//             role: role,
+//             mode: JSON.parse(req.body.mode)
+//         }
+//         if (role == "Doctor") {
+//             data['clinic'] = req.body.clinic;
+//             if (req.body.category) {
+//                 const ctg = JSON.parse(req.body.category);
+//                 data['category'] = ctg.map(itm => itm._id);
+//                 const parsedCategories = JSON.parse(req.body.category);
+//                 data['category_fee'] = parsedCategories.map(cat => ({
+//                     category: cat._id,
+//                     online_fee: cat.online_fee || 0,
+//                     offline_fee: cat.offline_fee || 0
+//                 }));
+//             }
+//         }
+//         if (req.body.email) {
+//             data['email'] = email.toLowerCase()
+//         }
+
+//         if (req.files) {
+//             if (req.files?.profile_image) {
+//                 data['profile_image'] = req.files.profile_image[0].path
+//             }
+//             if (req.files?.registration_certificate) {
+//                 data['registration_certificate'] = req.files.registration_certificate[0].path
+//             }
+//             if (req.files?.graduation_certificate) {
+//                 data['graduation_certificate'] = req.files.graduation_certificate[0].path
+//             }
+//             if (req.files?.post_graduation_certificate) {
+//                 data['post_graduation_certificate'] = req.files.post_graduation_certificate[0].path
+//             }
+//             if (req.files?.mci_certificate) {
+//                 data['mci_certificate'] = req.files.mci_certificate[0].path
+//             }
+//             if (req.files?.aadhaar_front) {
+//                 data['aadhaar_front'] = req.files.aadhaar_front[0].path
+//             }
+//             if (req.files?.aadhaar_back) {
+//                 data['aadhaar_back'] = req.files.aadhaar_back[0].path
+//             }
+//             if (req.files?.pan_image) {
+//                 data['pan_image'] = req.files.pan_image[0].path
+//             }
+//         }
+//         const resp = await User.create(data);
+//         const tokenuser = {
+//             _id: resp._id,
+//         }
+//         const doctor_id = resp._id;
+//         if (req.body.specialization) {
+//             const arr = JSON.parse(req.body.specialization);
+//             arr.forEach(async itm => {
+//                 await DoctorSpecialization.create({ doctor: doctor_id, specialization: itm });
+//             })
+//         }
+//         const token = jwt.sign({ user: tokenuser }, SECRET_KEY, { expiresIn: "1 days" })
+
+//         return res.json({ success: 1, token, message: "User created successfully", data: resp })
+
+
+//     } catch (err) {
+//         return res.json({
+//             errors: [{ 'message': err.message }],
+//             success: 0,
+
+//             data: [],
+//             message: err.message
+//         })
+//     }
+// }
 exports.store_profile = async (req, res) => {
     try {
-        const fields = ['mobile', 'name'];
-        const emptyFields = fields.filter(field => !req.body[field]);
+        const requiredFields = ['mobile', 'name'];
+        const emptyFields = requiredFields.filter(field => !req.body[field]);
         if (emptyFields.length > 0) {
-            return res.json({ success: 0, message: 'The following fields are required:' + emptyFields.join(','), fields: emptyFields });
+            return res.json({
+                success: 0,
+                message: 'The following fields are required: ' + emptyFields.join(', '),
+                fields: emptyFields
+            });
         }
+
         const { name, email, mobile, role = "User" } = req.body;
+
         if (!['Doctor', 'User'].includes(role)) {
-            return res.json({ success: 0, message: "Invalid role type", data: null })
+            return res.json({ success: 0, message: "Invalid role type", data: null });
         }
-        let slug = await generateUniqueSlug(req.body.name);
+
+        let slug = await generateUniqueSlug(name);
         if (req.body.city) {
-            slug = role + "-" + slug + "-in-" + req.body.city;
+            slug = `${role}-${slug}-in-${req.body.city}`;
         }
-        // if (!req.user) {
-        //     const checkIsMobileVerified = await OtpModel.findOne({ mobile: mobile, is_verified: true });
-        //     if (!checkIsMobileVerified) {
-        //         return res.json({ success: 0, message: "Mobile number is not verified" });
-        //     }
-        // }
-        // const ctg = JSON.parse(req.body.category);
-        // return res.json({ success: 0, message: ctg.map(itm => itm._id) })
-        const isMobileExists = await User.findOne({ mobile: mobile });
-        if (mobile.toString().length != 10) {
-            return res.json({ success: 0, message: "Mobile is not valid" })
+
+        if (mobile.toString().length !== 10) {
+            return res.json({ success: 0, message: "Mobile is not valid" });
         }
+
+        const isMobileExists = await User.findOne({ mobile });
         if (isMobileExists) {
             return res.json({
-                errors: [{ 'message': "Mobile is already in use" }],
+                errors: [{ message: "Mobile is already in use" }],
                 success: 0,
                 data: [],
                 message: "Mobile is already in use"
-            })
+            });
         }
-        const lastReuest = await User.findOne({ role }).sort({ request_id: -1 });
-        let new_request_id = 1;
-        if (lastReuest) {
-            new_request_id = lastReuest.request_id + 1
-        }
-        const prefix = role == "User" ? 'USER' : 'DOCTOR';
+
+        const lastRequest = await User.findOne({ role }).sort({ request_id: -1 });
+        const new_request_id = lastRequest ? lastRequest.request_id + 1 : 1;
+        const prefix = role === "User" ? 'USER' : 'DOCTOR';
+
         const data = {
             ...req.body,
             slug: slug.toLowerCase(),
             request_id: new_request_id,
             custom_request_id: prefix + String(new_request_id).padStart(10, '0'),
-            name: name,
-            mobile: mobile,
-            role: role,
-            mode: JSON.parse(req.body.mode)
-        }
-        if (role == "Doctor") {
-            data['clinic'] = req.body.clinic;
+            name,
+            mobile,
+            role,
+            mode: req.body.mode ? JSON.parse(req.body.mode) : null
+        };
+
+        if (role === "Doctor") {
+            data['clinic'] = req.body.clinic || null;
+
             if (req.body.category) {
                 const ctg = JSON.parse(req.body.category);
                 data['category'] = ctg.map(itm => itm._id);
-                const parsedCategories = JSON.parse(req.body.category);
-                data['category_fee'] = parsedCategories.map(cat => ({
+                data['category_fee'] = ctg.map(cat => ({
                     category: cat._id,
                     online_fee: cat.online_fee || 0,
                     offline_fee: cat.offline_fee || 0
                 }));
             }
         }
-        if (req.body.email) {
-            data['email'] = email.toLowerCase()
+
+        if (email) {
+            data['email'] = email.toLowerCase();
         }
 
+        // Handle file uploads
         if (req.files) {
-            if (req.files?.profile_image) {
-                data['profile_image'] = req.files.profile_image[0].path
-            }
-            if (req.files?.registration_certificate) {
-                data['registration_certificate'] = req.files.registration_certificate[0].path
-            }
-            if (req.files?.graduation_certificate) {
-                data['graduation_certificate'] = req.files.graduation_certificate[0].path
-            }
-            if (req.files?.post_graduation_certificate) {
-                data['post_graduation_certificate'] = req.files.post_graduation_certificate[0].path
-            }
-            if (req.files?.mci_certificate) {
-                data['mci_certificate'] = req.files.mci_certificate[0].path
-            }
-            if (req.files?.aadhaar_front) {
-                data['aadhaar_front'] = req.files.aadhaar_front[0].path
-            }
-            if (req.files?.aadhaar_back) {
-                data['aadhaar_back'] = req.files.aadhaar_back[0].path
-            }
-            if (req.files?.pan_image) {
-                data['pan_image'] = req.files.pan_image[0].path
-            }
+            const fileFields = [
+                'profile_image', 'registration_certificate', 'graduation_certificate',
+                'post_graduation_certificate', 'mci_certificate', 'aadhaar_front',
+                'aadhaar_back', 'pan_image'
+            ];
+            fileFields.forEach(field => {
+                if (req.files[field]) data[field] = req.files[field][0].path;
+            });
         }
+
         const resp = await User.create(data);
-        const tokenuser = {
-            _id: resp._id,
-        }
         const doctor_id = resp._id;
+
+        // Handle specialization if provided
         if (req.body.specialization) {
             const arr = JSON.parse(req.body.specialization);
-            arr.forEach(async itm => {
+            for (const itm of arr) {
                 await DoctorSpecialization.create({ doctor: doctor_id, specialization: itm });
-            })
+            }
         }
-        const token = jwt.sign({ user: tokenuser }, SECRET_KEY, { expiresIn: "1 days" })
 
-        return res.json({ success: 1, token, message: "User created successfully", data: resp })
+        const token = jwt.sign({ user: { _id: resp._id } }, SECRET_KEY, { expiresIn: "1d" });
 
+        return res.json({ success: 1, token, message: "User created successfully", data: resp });
 
     } catch (err) {
         return res.json({
-            errors: [{ 'message': err.message }],
+            errors: [{ message: err.message }],
             success: 0,
-
             data: [],
             message: err.message
-        })
+        });
     }
-}
+};
+
 exports.admin_login = async (req, res) => {
     try {
         // const admindata = {
