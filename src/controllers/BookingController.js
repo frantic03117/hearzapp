@@ -26,14 +26,15 @@ exports.create_booking = async (req, res) => {
     if (!bookinguser) {
         return res.json({ success: 0, message: "User is not registered with us. Please register first." });
     }
-    const finddoctor = await User.findOne({ _id: doctor_id, clinic: clinic_id, role: "Doctor" });
-    const findService = finddoctor.category.includes(service);
-    if (!findService) {
-        return res.json({ success: 0, message: "Service is required", data: [] });
-    }
-    if (!finddoctor) {
-        return res.json({ success: 0, message: "Doctor not found" });
-    }
+    const finddoctor = await User.findOne({ _id: doctor_id });
+    // const finddoctor = await User.findOne({ clinic: clinic_id, role: "Doctor", category :{$in : [service]} });
+    // const findService = finddoctor.category.includes(service);
+    // if (!findService) {
+    //     return res.json({ success: 0, message: "Service is required", data: [] });
+    // }
+    // if (!finddoctor) {
+    //     return res.json({ success: 0, message: "Doctor not found" });
+    // }
     if (!slots) {
         return res.status(400).json({ success: 0, message: "Slot not available or already booked" });
     }
