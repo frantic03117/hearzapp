@@ -133,10 +133,9 @@ exports.store_profile = async (req, res) => {
 
 exports.get_clinics = async (req, res) => {
     try {
-        const { category, state, city, page = 1, perPage = 10, id, url } = req.query;
+        const { category, state, city, page = 1, perPage = 10, id, url, for_booking = false } = req.query;
         const fdata = {
-            role: "Clinic",
-
+            role: "Clinic"
         }
         if (id) {
             const userfound = await User.findOne({ _id: id });
@@ -145,15 +144,21 @@ exports.get_clinics = async (req, res) => {
         if (url) {
             fdata['slug'] = url;
         }
+        let findcategory;
         if (category) {
             const findsetting = await Setting.find({ _id: { $in: category.split(',') } });
+            findcategory = findsetting.map(itm => itm._id);
             fdata['category'] = { $in: findsetting.map(itm => itm._id) };
         }
         if (state) {
-            fdata['state'] = { $regex: state, $options: "i" }
+            fdata['state'] = state
         }
         if (city) {
             fdata['city'] = { $in: city.split(',') }
+        }
+        if (for_booking) {
+            const doctors = await User.find({ category: { $in: category.split(',') }, role: "Doctor" });
+            fdata['_id'] = { $in: doctors.map(itm => itm.clinic) }
         }
         let project = {
             password: 0,
@@ -194,14 +199,23 @@ exports.get_clinics = async (req, res) => {
                     foreignField: "clinic",
                     as: "doctors",
                     pipeline: [
+                        ...(findcategory && findcategory.length > 0
+                            ? [
+                                {
+                                    $match: {
+                                        category: { $in: findcategory },
+                                    },
+                                },
+                            ]
+                            : []),
                         {
                             $project: {
                                 name: 1,
-                                profile_image: 1
-                            }
-                        }
-                    ]
-                }
+                                profile_image: 1,
+                            },
+                        },
+                    ],
+                },
             },
             {
                 $lookup: {

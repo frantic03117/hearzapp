@@ -122,10 +122,14 @@ const schema = new Schema({
         }
     },
     state: {
-        type: String,
+        type: Schema.Types.ObjectId,
+        ref: "Setting",
+        default: null
     },
     city: {
-        type: String,
+        type: Schema.Types.ObjectId,
+        ref: "Setting",
+        default: null
     },
     pincode: {
         type: String,

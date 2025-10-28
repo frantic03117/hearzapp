@@ -325,16 +325,11 @@ exports.create_slot = async (req, res) => {
 
 exports.get_slot = async (req, res) => {
     try {
-        // const tdat = "2025-06-13";
-        // const thiteen = moment(tdat).tz('Asia/Kolkata').format('YYYY-MM-DD');
-
-        const { dayname, date = new Date(), clinic, doctor } = req.query;
+        const { dayname, date = new Date(), clinic, doctor, category } = req.query;
         const fdata = {
             isHoliday: false
         };
         if (req.user) {
-
-
             if (req.user.role == "Clinic") {
                 fdata['clinic'] = req.user._id
             }
@@ -342,6 +337,7 @@ exports.get_slot = async (req, res) => {
         if (doctor) {
             fdata['doctor'] = doctor;
         }
+
         const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         // if (date) {
         //     fdata["date"] = moment.tz(date, "Asia/Kolkata").startOf("day").utc().toDate();
