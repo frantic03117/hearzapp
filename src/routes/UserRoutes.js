@@ -3,6 +3,7 @@ const { verify_otp, update_profile, user_list, send_otp, store_profile, admin_lo
 const store = require("../middleware/Upload");
 const { Auth } = require("../middleware/Auth");
 const UploadFile = require("../middleware/UploadFile");
+const { save_group_question_answer, fetch_group_question_answer } = require("../controllers/TestAttemptController");
 
 const router = Router();
 router.post('/send-otp', send_otp);
@@ -53,6 +54,8 @@ router.get('/', Auth, my_profile);
 router.delete('/delete/:id', Auth, delete_user);
 router.get('/hearing-medical-report', Auth, listPrescription);
 router.post('/hearing-medical-report', Auth, UploadFile('pdf').single('file'), uploadPrescription);
+router.post('/group-difficulty', Auth, save_group_question_answer);
+router.get('/group-difficulty', Auth, fetch_group_question_answer);
 router.delete('/deletePrescription/:id', Auth, deletePrescription);
 
 

@@ -1,6 +1,7 @@
 const TestQuestion = require("../models/TestQuestion");
 const TestAttempt = require("../models/TestAttempt");
 const crypto = require("crypto");
+const GroupQuestionAttempts = require("../models/GroupQuestionAttempts");
 
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
@@ -143,24 +144,72 @@ exports.deleteAttempt = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
-exports.getProductSuggestionQuestion = async (req, res) => {
-    const questions = require('../json/ProductSuggestion.json');
-    const { id, step, type, key } = req.query;
+exports.save_group_question_answer = async (req, res) => {
+    try {
+        const { group, difficulty } = req.body;
+        if (!group) {
+            return res.status(400).json({
+                success: 0,
+                message: "Group is required"
+            });
+        }
+        if (!difficulty) {
+            return res.status(400).json({
+                success: 0,
+                message: "Difficulty is required"
+            });
+        }
+        const existingAttempt = await GroupQuestionAttempts.findOne({
+            user: req.user._id,
+            group,
+            difficulty
+        });
+        if (existingAttempt) {
+            await GroupQuestionAttempts.findByIdAndDelete(existingAttempt._id);
+            return res.status(200).json({
+                success: 1,
+                message: "Previous attempt deleted successfully"
+            });
+        } else {
+            const newAttempt = await GroupQuestionAttempts.create({
+                user: req.user._id,
+                group,
+                difficulty
+            });
+            return res.status(200).json({
+                success: 1,
+                message: "Attempt saved successfully",
+                data: newAttempt
+            });
+        }
 
-    let fdata = {};
-    if (id) fdata.id = id;
-    if (step) fdata.step = parseInt(step, 10); // ensure step is a number
-    if (type) fdata.type = type;
-    if (key) fdata.key = key;
-
-    // If no filters provided, return all questions
-    let results = questions;
-    if (Object.keys(fdata).length > 0) {
-        results = questions.filter(q => {
-            return Object.entries(fdata).every(([k, v]) => q[k] === v);
+    } catch (err) {
+        res.status(500).json({
+            success: 0,
+            message: err.message
         });
     }
-
-    return res.json({ success: 1, data: results });
 };
 
+exports.fetch_group_question_answer = async (req, res) => {
+    try {
+        const { user, group, difficulty } = req.query;
+        const fdata = {};
+        if (req.user.role == "Admin") {
+            fdata['user'] = req.user._id
+        }
+        if (group) {
+            fdata['group'] = group
+        }
+        if (difficulty) {
+            fdata['difficulty'] = difficulty
+        }
+        const resp = await GroupQuestionAttempts.find(fdata);
+        return res.json({ success: 1, data: resp, message: "group difficulty" })
+    } catch (err) {
+        res.status(500).json({
+            success: 0,
+            message: err.message
+        });
+    }
+}
