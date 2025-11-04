@@ -2,12 +2,12 @@ const TestQuestion = require("../models/TestQuestion");
 const TestAttempt = require("../models/TestAttempt");
 const crypto = require("crypto");
 
-
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
-        const { test_name, question, selectedOption, answerText } = req.body;
-        const user = req.user._id;
-        if (req.user.role != "User") {
+        const { test_name, question, selectedOption } = req.body;
+        // console.log(req.user.role)
+        const user = req.user.role == "Admin" ? req.body.user : req.user._id;
+        if (!user) {
             return res.status(403).json({ success: 0, message: "Unauthorized" })
         }
         if (!test_name) return res.status(400).json({ data: null, success: 0, message: "test_name is required" });
@@ -22,32 +22,28 @@ exports.createOrUpdateAttempt = async (req, res) => {
         if (q.test_name.toString() !== test_name) {
             return res.status(400).json({ error: "Question does not belong to this test_name" });
         }
-
-        // Require at least one form of answer
-        if (!selectedOption && !answerText) {
-            return res.status(400).json({ error: "Either selectedOption or answerText is required" });
+        if (!selectedOption) {
+            return res.status(400).json({ error: "Selected Option is required" });
         }
-
-        // Check if user already attempted this question
+        const findoption = q.options.find(obj => obj._id.toString() == selectedOption.toString());
+        const answerText = findoption.option;
+        const questionmarks = { "No": 0, "Sometimes": 2, "Yes": 4 }
         let attempt = await TestAttempt.findOne({ test_name, user, question });
-
         if (attempt) {
-            // Update existing attempt
             attempt.selectedOption = selectedOption || attempt.selectedOption;
             attempt.answerText = answerText || attempt.answerText;
             attempt.isCorrect = null;
-            attempt.score = 0;
+            attempt.score = questionmarks[answerText];
             await attempt.save();
             return res.status(200).json({ message: "Answer updated", data: attempt, success: 1 });
         }
-
-        // Otherwise create new attempt
         attempt = new TestAttempt({
             test_name,
             user,
             question,
             selectedOption,
-            answerText
+            answerText,
+            score: questionmarks[answerText]
         });
 
         await attempt.save();
@@ -87,6 +83,7 @@ exports.getAttempts = async (req, res) => {
         const limit = parseInt(perPage);
 
         // Query
+        // await TestAttempt.deleteMany({})
         const attempts = await TestAttempt.find(filter)
             .populate("test_name")
             .populate("user")

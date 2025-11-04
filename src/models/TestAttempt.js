@@ -17,10 +17,10 @@ const testAttemptSchema = new Schema({
         required: true
     },
     selectedOption: {
-        type: Schema.Types.ObjectId // option id inside TestQuestion.options
+        type: Schema.Types.ObjectId
     },
     answerText: {
-        type: String // for written answers
+        type: String
     },
     isCorrect: {
         type: Boolean,
