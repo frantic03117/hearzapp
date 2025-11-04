@@ -51,8 +51,8 @@ router.get('/all', Auth, user_list);
 router.post('/auth', admin_login);
 router.get('/', Auth, my_profile);
 router.delete('/delete/:id', Auth, delete_user);
-router.get('/hearing-medical-report', Auth, UploadFile('pdf').single('file'), listPrescription);
-router.post('/hearing-medical-report', Auth, uploadPrescription);
+router.get('/hearing-medical-report', Auth, listPrescription);
+router.post('/hearing-medical-report', Auth, UploadFile('pdf').single('file'), uploadPrescription);
 router.delete('/deletePrescription/:id', Auth, deletePrescription);
 
 
