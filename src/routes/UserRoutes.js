@@ -1,7 +1,8 @@
 const { Router } = require("express");
-const { verify_otp, update_profile, user_list, send_otp, store_profile, admin_login, my_profile, delete_user } = require("../controllers/UserController");
+const { verify_otp, update_profile, user_list, send_otp, store_profile, admin_login, my_profile, delete_user, listPrescription, uploadPrescription, deletePrescription } = require("../controllers/UserController");
 const store = require("../middleware/Upload");
 const { Auth } = require("../middleware/Auth");
+const UploadFile = require("../middleware/UploadFile");
 
 const router = Router();
 router.post('/send-otp', send_otp);
@@ -50,6 +51,9 @@ router.get('/all', Auth, user_list);
 router.post('/auth', admin_login);
 router.get('/', Auth, my_profile);
 router.delete('/delete/:id', Auth, delete_user);
+router.get('/hearing-medical-report', Auth, UploadFile('pdf').single('file'), listPrescription);
+router.post('/hearing-medical-report', Auth, uploadPrescription);
+router.delete('/deletePrescription/:id', Auth, deletePrescription);
 
 
 module.exports = router;

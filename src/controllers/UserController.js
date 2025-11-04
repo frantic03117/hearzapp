@@ -4,6 +4,7 @@ const DoctorSpecialization = require("../models/DoctorSpecialization");
 const SECRET_KEY = process.env.SECRET_KEY ?? "frantic@hearzapp#6887";
 const jwt = require('jsonwebtoken');
 const { default: mongoose } = require("mongoose");
+const UserOfflinePrescription = require("../models/UserOfflinePrescription");
 async function generateUniqueSlug(name) {
     const baseSlug = name
         .toLowerCase()
@@ -23,8 +24,7 @@ async function generateUniqueSlug(name) {
 
 
     return slug;
-}
-
+};
 exports.send_otp = async (req, res) => {
     try {
         const mobile = req.body.mobile;
@@ -463,7 +463,6 @@ exports.user_list = async (req, res) => {
         });
     }
 };
-
 // exports.store_profile = async (req, res) => {
 //     try {
 //         const fields = ['mobile', 'name'];
@@ -690,7 +689,6 @@ exports.store_profile = async (req, res) => {
         });
     }
 };
-
 exports.admin_login = async (req, res) => {
     try {
         // const admindata = {
@@ -763,5 +761,105 @@ exports.delete_user = async (req, res) => {
         });
     } catch (err) {
         return res.status(500).json({ success: 0, message: err.message });
+    }
+};
+exports.uploadPrescription = async (req, res) => {
+    try {
+        const { description } = req.body;
+        const userId = req.user?._id;
+
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: 0,
+                message: "File is required"
+            });
+        }
+
+        // Build file path (depends on multer setup)
+        const filePath = req.file.path;
+        const udata = {
+            file: filePath,
+            description,
+            user: userId,
+        }
+        if (req.user.role == "Admin") {
+            udata['user'] = req.body.user
+        }
+        // Create document in MongoDB
+        const prescription = await UserOfflinePrescription.create(udata);
+
+        return res.status(200).json({
+            success: 1,
+            message: "Prescription uploaded successfully",
+            data: prescription
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: 0,
+            message: err.message
+        });
+    }
+};
+exports.listPrescription = async (req, res) => {
+    try {
+        const uid = req.user.role === "Admin"
+            ? req.query.user
+            : req.user._id;
+
+        if (!uid) {
+            return res.status(400).json({
+                success: 0,
+                message: "User ID is required"
+            });
+        }
+
+        // Fetch prescriptions
+        const prescriptions = await UserOfflinePrescription.find({ user: uid })
+            .populate("user", "name email")
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: 1,
+            message: "Prescriptions fetched successfully",
+            data: prescriptions
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: 0,
+            message: err.message
+        });
+    }
+};
+exports.deletePrescription = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const prescription = await UserOfflinePrescription.findById(id);
+        if (!prescription) {
+            return res.status(404).json({
+                success: 0,
+                message: "Prescription not found"
+            });
+        }
+        if (req.user.role != "Admin" && prescription.user.toString() != req.user._id.toString()) {
+            return res.status(403).json({
+                success: 0,
+                message: "Unauthorized to delete this prescription"
+            });
+        }
+        await UserOfflinePrescription.findByIdAndDelete(id);
+        return res.status(200).json({
+            success: 1,
+            message: "Prescription deleted successfully"
+        });
+    } catch (err) {
+        return res.status(500).json({
+            success: 0,
+            message: err.message
+        });
     }
 };
