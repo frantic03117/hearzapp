@@ -2,6 +2,7 @@ const TestQuestion = require("../models/TestQuestion");
 const TestAttempt = require("../models/TestAttempt");
 const crypto = require("crypto");
 const GroupQuestionAttempts = require("../models/GroupQuestionAttempts");
+const MedicalTest = require("../models/MedicalTest");
 
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
