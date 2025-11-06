@@ -257,6 +257,55 @@ exports.get_test_report = async (req, res) => {
         ]);
 
         const averageDecibal = result[0]?.averageDecibal || 0;
+        const separate_result = await MedicalTest.aggregate([
+            // Unwind both ears separately so we can tag them
+            {
+                $project: {
+                    left_ear: 1,
+                    right_ear: 1
+                }
+            },
+            {
+                $project: {
+                    ears: {
+                        $concatArrays: [
+                            {
+                                $map: {
+                                    input: "$left_ear",
+                                    as: "e",
+                                    in: { ear: "left", frequency: "$$e.frequency", decibal: "$$e.decibal" }
+                                }
+                            },
+                            {
+                                $map: {
+                                    input: "$right_ear",
+                                    as: "e",
+                                    in: { ear: "right", frequency: "$$e.frequency", decibal: "$$e.decibal" }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            { $unwind: "$ears" },
+            {
+                $match: {
+                    "ears.frequency": { $in: [500, 1000, 2000] }
+                }
+            },
+            {
+                $group: {
+                    _id: "$ears.ear",
+                    averageDecibal: { $avg: "$ears.decibal" }
+                }
+            }
+        ]);
+
+        const leftEar = separate_result.find(r => r._id === "left");
+        const rightEar = separate_result.find(r => r._id === "right");
+
+        const leftAvg = leftEar?.averageDecibal || 0;
+        const rightAvg = rightEar?.averageDecibal || 0;
 
         // --- 3️⃣ Determine Hearing Loss Category ---
         const getHearingLossCategory = (avgDb) => {
@@ -268,6 +317,16 @@ exports.get_test_report = async (req, res) => {
         };
 
         const hearingCategory = getHearingLossCategory(averageDecibal);
+        const separate_cateogry = {
+            leftEar: {
+                averageDecibal: leftAvg,
+                category: getHearingLossCategory(leftAvg)
+            },
+            rightEar: {
+                averageDecibal: rightAvg,
+                category: getHearingLossCategory(rightAvg)
+            }
+        };
 
         // --- 4️⃣ Send Response ---
         res.status(200).json({
@@ -275,7 +334,8 @@ exports.get_test_report = async (req, res) => {
             data: {
                 handicapScore,
                 averageDecibal,
-                hearingCategory
+                hearingCategory,
+                separate_cateogry
             }
         });
     } catch (err) {
