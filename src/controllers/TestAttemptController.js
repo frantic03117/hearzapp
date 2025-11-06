@@ -220,3 +220,67 @@ exports.fetch_group_question_answer = async (req, res) => {
         });
     }
 }
+exports.get_test_report = async (req, res) => {
+    try {
+        // --- 1️⃣ Get Total Handicap Score ---
+        const handicapScoreResult = await TestAttempt.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalScore: { $sum: "$score" }
+                }
+            }
+        ]);
+
+        const handicapScore = handicapScoreResult[0]?.totalScore || 0;
+
+        // --- 2️⃣ Get Average Decibel from Both Ears ---
+        const result = await MedicalTest.aggregate([
+            {
+                $project: {
+                    combinedEars: { $concatArrays: ["$left_ear", "$right_ear"] }
+                }
+            },
+            { $unwind: "$combinedEars" },
+            {
+                $match: {
+                    "combinedEars.frequency": { $in: [500, 1000, 2000] }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    averageDecibal: { $avg: "$combinedEars.decibal" }
+                }
+            }
+        ]);
+
+        const averageDecibal = result[0]?.averageDecibal || 0;
+
+        // --- 3️⃣ Determine Hearing Loss Category ---
+        const getHearingLossCategory = (avgDb) => {
+            if (avgDb >= 0 && avgDb <= 55) return "Mild to Moderate";
+            if (avgDb >= 41 && avgDb <= 85) return "Moderate to Severe";
+            if (avgDb >= 41 && avgDb <= 70) return "Moderate to Moderately Severe";
+            if (avgDb >= 60 && avgDb <= 120) return "Moderately Severe to Profound";
+            return "Unknown";
+        };
+
+        const hearingCategory = getHearingLossCategory(averageDecibal);
+
+        // --- 4️⃣ Send Response ---
+        res.status(200).json({
+            success: 1,
+            data: {
+                handicapScore,
+                averageDecibal,
+                hearingCategory
+            }
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: 0,
+            message: err.message
+        });
+    }
+};
