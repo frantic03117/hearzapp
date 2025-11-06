@@ -204,7 +204,14 @@ exports.fetch_group_question_answer = async (req, res) => {
         if (difficulty) {
             fdata['difficulty'] = difficulty
         }
-        const resp = await GroupQuestionAttempts.find(fdata);
+        const resp = await GroupQuestionAttempts.find(fdata).populate([
+            {
+                path: "group"
+            },
+            {
+                path: "difficulty"
+            }
+        ])
         return res.json({ success: 1, data: resp, message: "group difficulty" })
     } catch (err) {
         res.status(500).json({
