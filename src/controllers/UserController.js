@@ -765,9 +765,14 @@ exports.delete_user = async (req, res) => {
 };
 exports.uploadPrescription = async (req, res) => {
     try {
-        const { description } = req.body;
+        const { hl_degree, session_id, description } = req.body;
         const userId = req.user?._id;
-
+        if (!hl_degree) {
+            return res.status(500).json({ success: 0, message: "Hearing loss degree hl_degree is required" })
+        }
+        if (!session_id) {
+            return res.status(500).json({ success: 0, message: "Session is required" })
+        }
 
         if (!req.file) {
             return res.status(400).json({
