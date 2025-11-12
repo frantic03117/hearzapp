@@ -79,62 +79,97 @@ exports.createProduct = async (req, res) => {
 // Get All Products
 exports.getProducts = async (req, res) => {
     try {
-        const { page = 1, perPage = 10, id, slug, vfilters } = req.query;
+        const { page = 1, perPage = 10, id, slug, vfilters, price_min, price_max } = req.query;
         const fdata = {};
+
+        // Filter by product ID
         if (id) {
             fdata['_id'] = id;
         }
+
+        // Filter by slug
         if (slug) {
-            fdata['slug'] = slug
+            fdata['slug'] = slug;
         }
+
+        // Variant filters (color, connectivity, etc.)
+        let variantFilter = {};
         if (vfilters) {
-            let parsedFilters;
             try {
-                parsedFilters = JSON.parse(vfilters);
+                const parsedFilters = JSON.parse(vfilters);
+
+                // Transform comma-separated strings into $in
+                Object.keys(parsedFilters).forEach((key) => {
+                    if (typeof parsedFilters[key] === "string" && parsedFilters[key].includes(",")) {
+                        parsedFilters[key] = {
+                            $in: parsedFilters[key].split(",").map((v) => v.trim())
+                        };
+                    }
+                });
+
+                variantFilter = { ...parsedFilters };
             } catch (e) {
                 return res.status(400).json({
                     success: 0,
-                    message: "Invalid vfilters format, must be JSON",
+                    message: "Invalid vfilters format, must be valid JSON",
                 });
             }
-
-            // transform multi-value filters into $in
-            Object.keys(parsedFilters).forEach((key) => {
-                if (typeof parsedFilters[key] === "string" && parsedFilters[key].includes(",")) {
-                    parsedFilters[key] = {
-                        $in: parsedFilters[key].split(",").map((v) => v.trim())
-                    };
-                }
-            });
-
-            fdata["variants"] = { $elemMatch: parsedFilters };
         }
 
+        // Price Range Filter (applies to variants)
+        if (price_min || price_max) {
+            variantFilter.price = {};
+            if (price_min) variantFilter.price.$gte = Number(price_min);
+            if (price_max) variantFilter.price.$lte = Number(price_max);
+        }
+
+        // If we have variant-level filters, use $elemMatch
+        if (Object.keys(variantFilter).length > 0) {
+            fdata["variants"] = { $elemMatch: variantFilter };
+        }
+
+        // Pagination logic
         const totalDocs = await Product.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
-        const products = await Product.find(fdata).populate("category").sort({ createdAt: -1 }).skip(skip).limit(perPage).lean();
+
+        const products = await Product.find(fdata)
+            .populate("category")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(perPage)
+            .lean();
+
+        // Wishlist merging (if user logged in)
         let productsWithWishlist;
         if (req.user) {
-            const wishlited = await Cart.find({ user: req.user._id, cart_status: "Wishlist" });
-            const wishpids = wishlited.map(itm => itm.product.toString());
-            productsWithWishlist = products.map(product => ({
+            const wishlisted = await Cart.find({
+                user: req.user._id,
+                cart_status: "Wishlist",
+            });
+            const wishpids = wishlisted.map((itm) => itm.product.toString());
+
+            productsWithWishlist = products.map((product) => ({
                 ...product,
-                is_wishlist: wishpids.includes(product._id.toString())
+                is_wishlist: wishpids.includes(product._id.toString()),
             }));
         } else {
             productsWithWishlist = products;
         }
 
+        const pagination = { page: Number(page), perPage: Number(perPage), totalPages, totalDocs };
 
-        const pagination = {
-            page, perPage, totalPages, totalDocs
-        }
-        return res.status(200).json({ data: productsWithWishlist, success: 1, message: "List of prodct", pagination });
+        return res.status(200).json({
+            success: 1,
+            message: "List of products",
+            data: productsWithWishlist,
+            pagination,
+        });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ success: 0, error: err.message });
     }
 };
+
 
 // Get Product by ID
 exports.getProductById = async (req, res) => {
