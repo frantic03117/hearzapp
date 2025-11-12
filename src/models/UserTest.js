@@ -1,4 +1,4 @@
-const { Schema } = require("mongoose");
+const { Schema, model } = require("mongoose");
 const { v4: uuidv4 } = require('uuid');
 const schema = new Schema({
     user: {
@@ -12,4 +12,4 @@ const schema = new Schema({
     },
 }, { timestamps: true });
 
-module.exports = new module.exports('UserTest', schema);
+module.exports = new model('UserTest', schema);
