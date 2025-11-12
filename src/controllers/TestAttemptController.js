@@ -7,8 +7,11 @@ const { v4: uuidv4 } = require('uuid');
 const UserTest = require("../models/UserTest");
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
-        const { test_name, question, selectedOption } = req.body;
+        const { session_id, test_name, question, selectedOption } = req.body;
         // console.log(req.user.role)
+        if (!session_id) {
+            return res.status(500).json({ success: 0, message: "Session is required" })
+        }
         const user = req.user.role == "Admin" ? req.body.user : req.user._id;
         if (!user) {
             return res.status(403).json({ success: 0, message: "Unauthorized" })
@@ -148,7 +151,7 @@ exports.deleteAttempt = async (req, res) => {
 };
 exports.save_group_question_answer = async (req, res) => {
     try {
-        const { group } = req.body;
+        const { session_id, group } = req.body;
         if (!group) {
             return res.status(400).json({
                 success: 0,
@@ -159,6 +162,7 @@ exports.save_group_question_answer = async (req, res) => {
         const existingAttempt = await GroupQuestionAttempts.findOne({
             user: req.user._id,
             group,
+            session_id
 
         });
         if (existingAttempt) {
@@ -170,7 +174,8 @@ exports.save_group_question_answer = async (req, res) => {
         } else {
             const newAttempt = await GroupQuestionAttempts.create({
                 user: req.user._id,
-                group
+                group,
+                session_id
             });
             return res.status(200).json({
                 success: 1,

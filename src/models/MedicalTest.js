@@ -4,6 +4,11 @@ const EarSchema = new Schema({
     decibal: Number
 })
 const schema = new Schema({
+    session_id: {
+        type: Schema.Types.ObjectId,
+        ref: "UserTest",
+        required: true
+    },
     user: {
         type: Schema.Types.ObjectId,
         ref: "User",

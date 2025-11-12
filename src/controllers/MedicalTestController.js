@@ -47,16 +47,19 @@ exports.startTest = async (req, res) => {
 }
 exports.updateEarTest = async (req, res) => {
     const { id } = req.params;
-    const { ear, eardata } = req.body;
+    const { session_id, ear, eardata } = req.body;
+    if (!session_id) {
+        return res.status(500).json({ success: 0, message: "Session id is required", data: [] });
 
+    }
     // Validate ear
     if (!['left_ear', 'right_ear'].includes(ear)) {
-        return res.json({ success: 0, message: "Please select correct ear either left_ear, right_ear", data: [] });
+        return res.status(500).json({ success: 0, message: "Please select correct ear either left_ear, right_ear", data: [] });
     }
 
     // Validate eardata
     if (!Array.isArray(eardata) || eardata.length === 0) {
-        return res.json({ success: 0, message: "eardata must be a non-empty array", data: [] });
+        return res.status(500).json({ success: 0, message: "eardata must be a non-empty array", data: [] });
     }
 
     // Optional: Validate structure of each eardata item

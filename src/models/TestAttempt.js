@@ -1,6 +1,11 @@
 const { Schema, model } = require("mongoose");
 
 const testAttemptSchema = new Schema({
+    session_id: {
+        type: Schema.Types.ObjectId,
+        ref: "UserTest",
+        required: true
+    },
     test_name: {
         type: Schema.Types.ObjectId,
         ref: "Setting",
