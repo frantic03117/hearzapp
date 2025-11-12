@@ -482,7 +482,7 @@ exports.mark_holiday = async (req, res) => {
 exports.block_slot = async (req, res) => {
     try {
         const finduser = await User.findOne({ _id: req.user._id });
-        if (!['Admin', 'Clinic', 'Doctor'].includes(finduser.role)) {
+        if (!['Clinic', 'Doctor'].includes(finduser.role)) {
             return res.status(403).json({ success: 0, message: "Only clinic can add slots", data: null })
         }
         const clinic_id = finduser.role == "Clinic" ? finduser._id : finduser.clinic;

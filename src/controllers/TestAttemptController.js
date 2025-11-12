@@ -147,23 +147,18 @@ exports.deleteAttempt = async (req, res) => {
 };
 exports.save_group_question_answer = async (req, res) => {
     try {
-        const { group, difficulty } = req.body;
+        const { group } = req.body;
         if (!group) {
             return res.status(400).json({
                 success: 0,
                 message: "Group is required"
             });
         }
-        if (!difficulty) {
-            return res.status(400).json({
-                success: 0,
-                message: "Difficulty is required"
-            });
-        }
+
         const existingAttempt = await GroupQuestionAttempts.findOne({
             user: req.user._id,
             group,
-            difficulty
+
         });
         if (existingAttempt) {
             await GroupQuestionAttempts.findByIdAndDelete(existingAttempt._id);
@@ -174,8 +169,7 @@ exports.save_group_question_answer = async (req, res) => {
         } else {
             const newAttempt = await GroupQuestionAttempts.create({
                 user: req.user._id,
-                group,
-                difficulty
+                group
             });
             return res.status(200).json({
                 success: 1,
