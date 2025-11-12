@@ -787,6 +787,8 @@ exports.uploadPrescription = async (req, res) => {
             file: filePath,
             description,
             user: userId,
+            hl_degree: hl_degree,
+            session: session_id
         }
         if (req.user.role == "Admin") {
             udata['user'] = req.body.user
