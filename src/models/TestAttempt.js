@@ -1,7 +1,7 @@
 const { Schema, model } = require("mongoose");
 
 const testAttemptSchema = new Schema({
-    test_name: { // same as in TestQuestion
+    test_name: {
         type: Schema.Types.ObjectId,
         ref: "Setting",
         required: true

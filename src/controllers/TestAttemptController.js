@@ -3,7 +3,8 @@ const TestAttempt = require("../models/TestAttempt");
 const crypto = require("crypto");
 const GroupQuestionAttempts = require("../models/GroupQuestionAttempts");
 const MedicalTest = require("../models/MedicalTest");
-
+const { v4: uuidv4 } = require('uuid');
+const UserTest = require("../models/UserTest");
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
         const { test_name, question, selectedOption } = req.body;
@@ -339,3 +340,16 @@ exports.get_test_report = async (req, res) => {
         });
     }
 };
+exports.start_test = async (req, res) => {
+    try {
+        const user_id = req.user._id;
+        const resp = await UserTest.create({ user: user_id });
+        return res.json({ success: 1, message: "Start session", data: resp })
+
+    } catch (err) {
+        res.status(500).json({
+            success: 0,
+            message: err.message
+        });
+    }
+}

@@ -7,11 +7,13 @@ const schema = new Schema({
     },
     group: {
         type: Schema.Types.ObjectId,
-        ref: "Setting"
+        ref: "Setting",
+        default: null
     },
     difficulty: {
         type: Schema.Types.ObjectId,
-        ref: "Setting"
+        ref: "Setting",
+        default: null
     },
 }, { timestamps: true });
 
