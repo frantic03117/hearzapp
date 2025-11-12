@@ -1,5 +1,5 @@
 const { Schema, model } = require("mongoose");
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const schema = new Schema({
     user: {
         type: Schema.Types.ObjectId,
@@ -8,7 +8,7 @@ const schema = new Schema({
     session_id: {
         type: String,
         unique: true,
-        default: () => `TS-${uuidv4().split('-')[0].toUpperCase()}` //
+        default: () => `TS-${randomUUID().split('-')[0].toUpperCase()}` //
     },
 }, { timestamps: true });
 
