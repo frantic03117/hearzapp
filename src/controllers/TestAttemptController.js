@@ -3,6 +3,7 @@ const TestAttempt = require("../models/TestAttempt");
 const GroupQuestionAttempts = require("../models/GroupQuestionAttempts");
 const MedicalTest = require("../models/MedicalTest");
 const UserTest = require("../models/UserTest");
+const { default: mongoose } = require("mongoose");
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
         const { session_id, test_name, question, selectedOption } = req.body;
