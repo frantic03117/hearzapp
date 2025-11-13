@@ -79,34 +79,35 @@ exports.createProduct = async (req, res) => {
 // Get All Products
 exports.getProducts = async (req, res) => {
     try {
-        const { page = 1, perPage = 10, id, slug, vfilters, price_min, price_max } = req.query;
+        const {
+            page = 1,
+            perPage = 10,
+            id,
+            slug,
+            vfilters,
+            price_min,
+            price_max,
+            session_id
+        } = req.query;
+
         const fdata = {};
-
-        // Filter by product ID
-        if (id) {
-            fdata['_id'] = id;
-        }
-
-        // Filter by slug
-        if (slug) {
-            fdata['slug'] = slug;
-        }
-
-        // Variant filters (color, connectivity, etc.)
         let variantFilter = {};
+
+        // 1️⃣ Filter by ID or slug
+        if (id) fdata["_id"] = id;
+        if (slug) fdata["slug"] = slug;
+
+        // 2️⃣ Parse variant filters from query
         if (vfilters) {
             try {
                 const parsedFilters = JSON.parse(vfilters);
-
-                // Transform comma-separated strings into $in
                 Object.keys(parsedFilters).forEach((key) => {
                     if (typeof parsedFilters[key] === "string" && parsedFilters[key].includes(",")) {
                         parsedFilters[key] = {
-                            $in: parsedFilters[key].split(",").map((v) => v.trim())
+                            $in: parsedFilters[key].split(",").map((v) => v.trim()),
                         };
                     }
                 });
-
                 variantFilter = { ...parsedFilters };
             } catch (e) {
                 return res.status(400).json({
@@ -116,31 +117,83 @@ exports.getProducts = async (req, res) => {
             }
         }
 
-        // Price Range Filter (applies to variants)
+        // 3️⃣ Price filter from query params
         if (price_min || price_max) {
             variantFilter.price = {};
             if (price_min) variantFilter.price.$gte = Number(price_min);
             if (price_max) variantFilter.price.$lte = Number(price_max);
         }
 
-        // If we have variant-level filters, use $elemMatch
+        // 4️⃣ Apply filters from UserTest (session_id)
+        if (session_id) {
+            // ✅ Find saved filters in UserTest
+            const userFilterDoc = await UserTest.findOne({ session_id }).lean();
+
+            if (userFilterDoc && userFilterDoc.filters.length > 0) {
+                // ✅ Get allowed variant keys
+                const allowedkeys = await VariantKey.find({ form: "Variant" })
+                    .select("key")
+                    .lean();
+                const allowedKeyNames = allowedkeys.map((k) => k.key);
+
+                const mappedFilters = {};
+
+                for (const f of userFilterDoc.filters) {
+                    if (
+                        allowedKeyNames.includes(f.key_name) &&
+                        f.key_value !== undefined &&
+                        f.key_value !== null
+                    ) {
+                        // ✅ Handle special key: price_range (e.g., "15000-30000")
+                        if (f.key_name === "price_range" && typeof f.key_value === "string") {
+                            const [min, max] = f.key_value.split("-").map((n) => Number(n.trim()));
+                            if (!isNaN(min) && !isNaN(max)) {
+                                variantFilter.price = { $gte: min, $lte: max };
+                            }
+                            continue;
+                        }
+
+                        // ✅ If array → use $in
+                        if (Array.isArray(f.key_value)) {
+                            mappedFilters[f.key_name] = { $in: f.key_value };
+                        } else if (
+                            typeof f.key_value === "string" &&
+                            f.key_value.includes(",")
+                        ) {
+                            // Also handle comma-separated string as $in
+                            mappedFilters[f.key_name] = {
+                                $in: f.key_value.split(",").map((v) => v.trim()),
+                            };
+                        } else {
+                            mappedFilters[f.key_name] = f.key_value;
+                        }
+                    }
+                }
+
+                // ✅ Merge mapped filters from UserTest
+                variantFilter = { ...variantFilter, ...mappedFilters };
+            }
+        }
+
+        // 5️⃣ Apply variant-level filters ($elemMatch)
         if (Object.keys(variantFilter).length > 0) {
             fdata["variants"] = { $elemMatch: variantFilter };
         }
 
-        // Pagination logic
+        // 6️⃣ Pagination setup
         const totalDocs = await Product.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
 
+        // 7️⃣ Fetch products
         const products = await Product.find(fdata)
             .populate("category")
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(perPage)
+            .limit(Number(perPage))
             .lean();
 
-        // Wishlist merging (if user logged in)
+        // 8️⃣ Wishlist integration
         let productsWithWishlist;
         if (req.user) {
             const wishlisted = await Cart.find({
@@ -157,8 +210,15 @@ exports.getProducts = async (req, res) => {
             productsWithWishlist = products;
         }
 
-        const pagination = { page: Number(page), perPage: Number(perPage), totalPages, totalDocs };
+        // 9️⃣ Pagination response
+        const pagination = {
+            page: Number(page),
+            perPage: Number(perPage),
+            totalPages,
+            totalDocs,
+        };
 
+        // 🔟 Final response
         return res.status(200).json({
             success: 1,
             message: "List of products",
@@ -166,6 +226,7 @@ exports.getProducts = async (req, res) => {
             pagination,
         });
     } catch (err) {
+        console.error("Error in getProducts:", err);
         res.status(500).json({ success: 0, error: err.message });
     }
 };
