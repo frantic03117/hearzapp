@@ -234,6 +234,7 @@ exports.getProducts = async (req, res) => {
             message: "List of products",
             data: productsWithWishlist,
             pagination,
+            variantFilter
         });
     } catch (err) {
         console.error("getProducts error:", err);
