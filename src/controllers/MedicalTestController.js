@@ -3,7 +3,10 @@ const User = require("../models/User");
 
 exports.startTest = async (req, res) => {
     try {
-        const { for_self } = req.body;
+        const { session_id, for_self } = req.body;
+        if (!session_id) {
+            return res.status(500).json({ success: 0, message: "Session is required" })
+        }
         if (!['Yes', 'No'].includes(for_self)) {
             return res.json({ success: 0, message: "for_self must be either Yes or No" });
         }
@@ -35,6 +38,7 @@ exports.startTest = async (req, res) => {
         }
         const patient = for_self == "Yes" ? req.user._id : usercreated._id;
         const data = {
+            session_id: session_id,
             'user': req.user._id,
             'patient': patient,
             'for_self': for_self,
@@ -71,7 +75,7 @@ exports.updateEarTest = async (req, res) => {
     }
 
     try {
-        const findtst = await MedicalTest.findById(id);
+        const findtst = await MedicalTest.findOne({ _id: id, session_id: session_id });
         if (!findtst) {
             return res.json({ success: 0, message: "MedicalTest not found", data: [] });
         }
