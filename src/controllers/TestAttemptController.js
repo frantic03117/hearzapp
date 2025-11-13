@@ -222,13 +222,14 @@ exports.fetch_group_question_answer = async (req, res) => {
         });
     }
 }
+
 exports.get_test_report = async (req, res) => {
     try {
         const user_id = req.user._id;
         const { session_id } = req.query;
 
         if (!session_id) {
-            return res.status(400).json({ success: 0, message: "Session ID is required" });
+            return res.status(400).json({ success: 0, message: "session_id is required" });
         }
 
         const sessionObjectId = mongoose.isValidObjectId(session_id)
@@ -238,47 +239,36 @@ exports.get_test_report = async (req, res) => {
         // --- 1️⃣ Handicap Score ---
         const handicapScoreResult = await TestAttempt.aggregate([
             { $match: { session_id: sessionObjectId } },
-            {
-                $group: {
-                    _id: null,
-                    totalScore: { $sum: "$score" },
-                },
-            },
+            { $group: { _id: null, totalScore: { $sum: "$score" } } },
         ]);
         const handicapScore = handicapScoreResult[0]?.totalScore || 0;
 
-        // --- 2️⃣ Get user's selected group (with populated LifeStyleGroup info)
+        // --- 2️⃣ Get Group (with populated LifestyleGroup info) ---
         const groupAttempt = await GroupQuestionAttempts.findOne({
             user: user_id,
             session_id,
-        }).populate("group"); // assuming "group" is a ref to LifeStyleGroup
+        }).populate("group"); // assuming "group" ref: "LifeStyleGroup"
 
         const groupDoc = groupAttempt?.group;
         if (!groupDoc) {
-            return res.status(400).json({ success: 0, message: "Group selection not found" });
+            return res.status(400).json({ success: 0, message: "Group not found for this session" });
         }
 
-        // Extract group number from title (like "GROUP 1", "GROUP 2" etc.)
-        const title = groupDoc.title || "";
-        const match = title.match(/GROUP\s*[-]?\s*(\d)/i);
+        // Extract group number (from title like "GROUP 1", "GROUP 2")
+        const match = groupDoc.title?.match(/GROUP\s*[-]?\s*(\d)/i);
         const groupNumber = match ? Number(match[1]) : null;
 
-        // --- 3️⃣ Average Decibel ---
+        // --- 3️⃣ Compute Average Decibel ---
         const result = await MedicalTest.aggregate([
             { $match: { session_id: sessionObjectId } },
             { $project: { combinedEars: { $concatArrays: ["$left_ear", "$right_ear"] } } },
             { $unwind: "$combinedEars" },
             { $match: { "combinedEars.frequency": { $in: [500, 1000, 2000] } } },
-            {
-                $group: {
-                    _id: null,
-                    averageDecibal: { $avg: "$combinedEars.decibal" },
-                },
-            },
+            { $group: { _id: null, averageDecibal: { $avg: "$combinedEars.decibal" } } },
         ]);
         const averageDecibal = result[0]?.averageDecibal || 0;
 
-        // --- 4️⃣ Left & Right ear averages ---
+        // --- 4️⃣ Compute Left & Right Ear Separately ---
         const separate_result = await MedicalTest.aggregate([
             { $match: { session_id: sessionObjectId } },
             {
@@ -306,17 +296,14 @@ exports.get_test_report = async (req, res) => {
             { $unwind: "$ears" },
             { $match: { "ears.frequency": { $in: [500, 1000, 2000] } } },
             {
-                $group: {
-                    _id: "$ears.ear",
-                    averageDecibal: { $avg: "$ears.decibal" },
-                },
+                $group: { _id: "$ears.ear", averageDecibal: { $avg: "$ears.decibal" } },
             },
         ]);
 
         const leftAvg = separate_result.find((r) => r._id === "left")?.averageDecibal || 0;
         const rightAvg = separate_result.find((r) => r._id === "right")?.averageDecibal || 0;
 
-        // --- 5️⃣ Determine Hearing Loss Category ---
+        // --- 5️⃣ Determine Hearing Category ---
         const getHearingLossCategory = (avgDb) => {
             if (avgDb >= 0 && avgDb <= 40)
                 return { degree: "Mild to Moderate", ha_style: ["RIC"], ha_style_suggestion: "RIC with dome" };
@@ -327,24 +314,17 @@ exports.get_test_report = async (req, res) => {
             if (avgDb >= 71 && avgDb <= 85)
                 return { degree: "Moderate to Severe", ha_style: ["IIC", "CIC", "ITC"], ha_style_suggestion: "IIC/CIC/ITC" };
             if (avgDb >= 86 && avgDb <= 120)
-                return { degree: "Moderately Severe to Profound", ha_style: ["BTE"], ha_style_suggestion: "UP/SP BTE with Mould" };
+                return { degree: "Moderately Severe to Profound", ha_style: ["BTE"], ha_style_suggestion: "UP/SP BTE with mould" };
             return { degree: "Unknown", ha_style_suggestion: "Not specified" };
         };
 
         const hearingCategory = getHearingLossCategory(averageDecibal);
-
         const separate_category = {
-            leftEar: {
-                averageDecibal: leftAvg,
-                category: getHearingLossCategory(leftAvg),
-            },
-            rightEar: {
-                averageDecibal: rightAvg,
-                category: getHearingLossCategory(rightAvg),
-            },
+            leftEar: { averageDecibal: leftAvg, category: getHearingLossCategory(leftAvg) },
+            rightEar: { averageDecibal: rightAvg, category: getHearingLossCategory(rightAvg) },
         };
 
-        // --- 6️⃣ Map Lifestyle Group to Auto Filters ---
+        // --- 6️⃣ Lifestyle Group → Filters Map ---
         const groupFiltersMap = {
             1: {
                 technology_level: "Basic",
@@ -378,7 +358,7 @@ exports.get_test_report = async (req, res) => {
 
         const groupFilters = groupNumber ? groupFiltersMap[groupNumber] || {} : {};
 
-        // --- 7️⃣ Build all filters to save ---
+        // --- 7️⃣ Build Filter Array ---
         const filtersToSave = [
             { key_name: "degree", key_value: hearingCategory.degree },
             { key_name: "ha_style", key_value: hearingCategory.ha_style },
@@ -392,7 +372,19 @@ exports.get_test_report = async (req, res) => {
             })),
         ];
 
-        // --- 8️⃣ Save or update UserTest filters ---
+        // --- 8️⃣ Add min_price / max_price from price_range ---
+        const priceFilter = filtersToSave.find((f) => f.key_name === "price_range");
+        if (priceFilter && typeof priceFilter.key_value === "string" && priceFilter.key_value.includes("-")) {
+            const [minStr, maxStr] = priceFilter.key_value.split("-");
+            const min = parseInt(minStr.trim());
+            const max = parseInt(maxStr.trim());
+            if (!isNaN(min) && !isNaN(max)) {
+                filtersToSave.push({ key_name: "min_price", key_value: min });
+                filtersToSave.push({ key_name: "max_price", key_value: max });
+            }
+        }
+
+        // --- 9️⃣ Save or Update UserTest ---
         let userTest = await UserTest.findOne({ user: user_id, session_id });
 
         if (!userTest) {
@@ -410,7 +402,7 @@ exports.get_test_report = async (req, res) => {
 
         await userTest.save();
 
-        // --- ✅ Final Response ---
+        // --- ✅ Response ---
         res.status(200).json({
             success: 1,
             data: {
@@ -425,10 +417,7 @@ exports.get_test_report = async (req, res) => {
         });
     } catch (err) {
         console.error("Error in get_test_report:", err);
-        res.status(500).json({
-            success: 0,
-            message: err.message,
-        });
+        res.status(500).json({ success: 0, message: err.message });
     }
 };
 

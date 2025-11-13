@@ -1,5 +1,6 @@
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
+const UserTest = require("../models/UserTest");
 async function generateUniqueSlug(name) {
     const baseSlug = name
         .toLowerCase()
@@ -87,130 +88,138 @@ exports.getProducts = async (req, res) => {
             vfilters,
             price_min,
             price_max,
-            session_id
+            session_id,
         } = req.query;
 
-        const fdata = {};
-        let variantFilter = {};
+        const fdata = {}; // main product filter
 
-        // 1️⃣ Filter by ID or slug
         if (id) fdata["_id"] = id;
         if (slug) fdata["slug"] = slug;
 
-        // 2️⃣ Parse variant filters from query
+        // 🔹 Get allowed variant keys once (to reuse for both vfilters and session filters)
+        const allowedKeys = await VariantKey.find({ form: "Variant" }).select("key").lean();
+        const allowedKeySet = new Set(allowedKeys.map((k) => k.key));
+
+        // 🔹 Initialize variant filters
+        let variantFilter = {};
+
+        // ✅ Manual variant filters (vfilters from query)
         if (vfilters) {
             try {
                 const parsedFilters = JSON.parse(vfilters);
+
                 Object.keys(parsedFilters).forEach((key) => {
-                    if (typeof parsedFilters[key] === "string" && parsedFilters[key].includes(",")) {
-                        parsedFilters[key] = {
-                            $in: parsedFilters[key].split(",").map((v) => v.trim()),
-                        };
+                    if (!allowedKeySet.has(key)) return; // ❌ skip disallowed keys
+
+                    const value = parsedFilters[key];
+
+                    // ✅ Special case: price_range like "15000-30000"
+                    if (key === "price_range") {
+                        if (typeof value === "string") {
+                            const [minStr, maxStr] = value.split("-");
+                            const min = parseInt(minStr.trim());
+                            const max = parseInt(maxStr.trim());
+                            if (!isNaN(min) && !isNaN(max)) {
+                                variantFilter.price = { $gte: min, $lte: max };
+                            }
+                        }
+                        return; // skip adding key itself
                     }
+
+                    // ✅ If value is an array, use $in
+                    if (Array.isArray(value)) {
+                        variantFilter[key] = { $in: value };
+                        return;
+                    }
+
+                    // ✅ If value is a comma-separated string, also use $in
+                    if (typeof value === "string" && value.includes(",")) {
+                        variantFilter[key] = {
+                            $in: value.split(",").map((v) => v.trim()),
+                        };
+                        return;
+                    }
+
+                    // ✅ Otherwise, direct equality match
+                    variantFilter[key] = value;
                 });
-                variantFilter = { ...parsedFilters };
             } catch (e) {
                 return res.status(400).json({
                     success: 0,
                     message: "Invalid vfilters format, must be valid JSON",
                 });
             }
+
         }
 
-        // 3️⃣ Price filter from query params
+        // ✅ Price filter (manual)
         if (price_min || price_max) {
             variantFilter.price = {};
             if (price_min) variantFilter.price.$gte = Number(price_min);
             if (price_max) variantFilter.price.$lte = Number(price_max);
         }
 
-        // 4️⃣ Apply filters from UserTest (session_id)
+        // ✅ Session-based filters
         if (session_id) {
-            // ✅ Find saved filters in UserTest
-            const userFilterDoc = await UserTest.findOne({ session_id }).lean();
+            const sessionObjectId = mongoose.isValidObjectId(session_id)
+                ? new mongoose.Types.ObjectId(session_id)
+                : session_id;
 
-            if (userFilterDoc && userFilterDoc.filters.length > 0) {
-                // ✅ Get allowed variant keys
-                const allowedkeys = await VariantKey.find({ form: "Variant" })
-                    .select("key")
-                    .lean();
-                const allowedKeyNames = allowedkeys.map((k) => k.key);
+            const userTest = await UserTest.findOne({ session_id: sessionObjectId }).lean();
 
-                const mappedFilters = {};
+            if (userTest && Array.isArray(userTest.filters)) {
+                userTest.filters.forEach((f) => {
+                    if (!f.key_name || !f.key_value) return;
+                    if (!allowedKeySet.has(f.key_name)) return; // ❌ skip disallowed keys
 
-                for (const f of userFilterDoc.filters) {
-                    if (
-                        allowedKeyNames.includes(f.key_name) &&
-                        f.key_value !== undefined &&
-                        f.key_value !== null
-                    ) {
-                        // ✅ Handle special key: price_range (e.g., "15000-30000")
-                        if (f.key_name === "price_range" && typeof f.key_value === "string") {
-                            const [min, max] = f.key_value.split("-").map((n) => Number(n.trim()));
-                            if (!isNaN(min) && !isNaN(max)) {
-                                variantFilter.price = { $gte: min, $lte: max };
-                            }
-                            continue;
+                    if (f.key_name === "price_range" && typeof f.key_value === "string") {
+                        const [minStr, maxStr] = f.key_value.split("-");
+                        const min = parseInt(minStr.trim());
+                        const max = parseInt(maxStr.trim());
+                        if (!isNaN(min) && !isNaN(max)) {
+                            variantFilter.price = { $gte: min, $lte: max };
                         }
-
-                        // ✅ If array → use $in
-                        if (Array.isArray(f.key_value)) {
-                            mappedFilters[f.key_name] = { $in: f.key_value };
-                        } else if (
-                            typeof f.key_value === "string" &&
-                            f.key_value.includes(",")
-                        ) {
-                            // Also handle comma-separated string as $in
-                            mappedFilters[f.key_name] = {
-                                $in: f.key_value.split(",").map((v) => v.trim()),
-                            };
-                        } else {
-                            mappedFilters[f.key_name] = f.key_value;
-                        }
+                    } else if (Array.isArray(f.key_value)) {
+                        variantFilter[f.key_name] = { $in: f.key_value };
+                    } else {
+                        variantFilter[f.key_name] = f.key_value;
                     }
-                }
-
-                // ✅ Merge mapped filters from UserTest
-                variantFilter = { ...variantFilter, ...mappedFilters };
+                });
             }
         }
 
-        // 5️⃣ Apply variant-level filters ($elemMatch)
+        // ✅ Apply variant filter if exists
         if (Object.keys(variantFilter).length > 0) {
             fdata["variants"] = { $elemMatch: variantFilter };
         }
 
-        // 6️⃣ Pagination setup
+        // 🔹 Pagination
         const totalDocs = await Product.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
 
-        // 7️⃣ Fetch products
         const products = await Product.find(fdata)
             .populate("category")
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(Number(perPage))
+            .limit(perPage)
             .lean();
 
-        // 8️⃣ Wishlist integration
-        let productsWithWishlist;
+        // 🔹 Wishlist flag
+        let productsWithWishlist = products;
         if (req.user) {
             const wishlisted = await Cart.find({
                 user: req.user._id,
                 cart_status: "Wishlist",
             });
             const wishpids = wishlisted.map((itm) => itm.product.toString());
-
             productsWithWishlist = products.map((product) => ({
                 ...product,
                 is_wishlist: wishpids.includes(product._id.toString()),
             }));
-        } else {
-            productsWithWishlist = products;
         }
 
-        // 9️⃣ Pagination response
+        // 🔹 Response
         const pagination = {
             page: Number(page),
             perPage: Number(perPage),
@@ -218,7 +227,6 @@ exports.getProducts = async (req, res) => {
             totalDocs,
         };
 
-        // 🔟 Final response
         return res.status(200).json({
             success: 1,
             message: "List of products",
@@ -226,7 +234,7 @@ exports.getProducts = async (req, res) => {
             pagination,
         });
     } catch (err) {
-        console.error("Error in getProducts:", err);
+        console.error("getProducts error:", err);
         res.status(500).json({ success: 0, error: err.message });
     }
 };
