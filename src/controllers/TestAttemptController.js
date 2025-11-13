@@ -32,7 +32,7 @@ exports.createOrUpdateAttempt = async (req, res) => {
         const findoption = q.options.find(obj => obj._id.toString() == selectedOption.toString());
         const answerText = findoption.option;
         const questionmarks = { "No": 0, "Sometimes": 2, "Yes": 4 }
-        let attempt = await TestAttempt.findOne({ test_name, user, question });
+        let attempt = await TestAttempt.findOne({ session_id, test_name, user, question });
         if (attempt) {
             attempt.selectedOption = selectedOption || attempt.selectedOption;
             attempt.answerText = answerText || attempt.answerText;
@@ -42,6 +42,7 @@ exports.createOrUpdateAttempt = async (req, res) => {
             return res.status(200).json({ message: "Answer updated", data: attempt, success: 1 });
         }
         attempt = new TestAttempt({
+            session_id,
             test_name,
             user,
             question,
