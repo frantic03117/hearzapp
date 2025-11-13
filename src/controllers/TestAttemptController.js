@@ -5,6 +5,7 @@ const MedicalTest = require("../models/MedicalTest");
 const UserTest = require("../models/UserTest");
 const { default: mongoose } = require("mongoose");
 const VariantKey = require("../models/VariantKey");
+const Setting = require("../models/Setting");
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
         const { session_id, test_name, question, selectedOption } = req.body;
@@ -448,6 +449,7 @@ exports.save_filter_selection = async (req, res) => {
                 message: "key_name and value are required",
             });
         }
+
         let userTest = await UserTest.findOne({ user: user_id, _id: session_id });
         if (!userTest) {
             return res.json({ success: 0, message: "Session not found" })
@@ -462,7 +464,7 @@ exports.save_filter_selection = async (req, res) => {
         res.status(200).json({
             success: 1,
             message: "Filter selection saved successfully",
-            data: userTest
+            data: userTest,
         });
 
     } catch (err) {
@@ -478,39 +480,26 @@ exports.get_my_test_session = async (req, res) => {
         const { session_id } = req.query;
 
         if (!session_id) {
-            return res.status(400).json({
-                success: 0,
-                message: "Session ID is required",
-            });
+            return res.status(400).json({ success: 0, message: "Session ID is required" });
         }
 
-        // 🧩 Find test session
-        const testDoc = await UserTest.findOne({ _id: session_id }).lean();
-        if (!testDoc) {
-            return res.status(404).json({
-                success: 0,
-                message: "Session not found",
-            });
+        // 🔹 Fetch test session
+        const userTest = await UserTest.findOne({ _id: session_id }).lean();
+        if (!userTest) {
+            return res.status(404).json({ success: 0, message: "No test session found" });
         }
 
-        // 🧩 Fetch allowed filter keys from VariantKey
-        const allowedKeys = await VariantKey.find()
-            .select("key")
+
+        // 🔹 Fetch all Setting docs where type matches any filter key_name
+        const filterKeys = userTest.filters.map(f => f.key_name);
+        const relatedSettings = await Setting.find({ type: { $in: filterKeys } })
             .lean();
 
-        const allowedKeySet = new Set(allowedKeys.map((k) => k.key));
-
-        // 🧩 Filter out disallowed filters
-        const allowedFilters = (testDoc.filters || []).filter((f) =>
-            allowedKeySet.has(f.key_name)
-        );
-
-        // ✅ Return only allowed filters
+        // ✅ Response
         return res.status(200).json({
             success: 1,
-            message: "Allowed filters for this session",
-            filters: allowedFilters,
-            f: testDoc.filters
+            message: "User test session with allowed filters, questions, and related settings",
+            data: relatedSettings
         });
     } catch (err) {
         console.error("get_my_test_session error:", err);

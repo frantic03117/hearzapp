@@ -172,8 +172,7 @@ exports.getProducts = async (req, res) => {
             if (userTest && Array.isArray(userTest.filters)) {
                 userTest.filters.forEach((f) => {
                     if (!f.key_name || !f.key_value) return;
-                    if (!allowedKeySet.has(f.key_name)) return; // ❌ skip disallowed keys
-
+                    if (!allowedKeySet.has(f.key_name)) return;
                     if (f.key_name === "price_range" && typeof f.key_value === "string") {
                         const [minStr, maxStr] = f.key_value.split("-");
                         const min = parseInt(minStr.trim());

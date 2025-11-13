@@ -107,7 +107,8 @@ exports.product_suggestion_filter_question = async (req, res) => {
                 return {
                     question: re.question,
                     key: re.option_key?.key,
-                    options
+                    options,
+                    filter_key: keyvalues
                 };
             })
         );
