@@ -147,6 +147,7 @@ exports.deleteAttempt = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
 exports.save_group_question_answer = async (req, res) => {
     try {
         const { session_id, group } = req.body;
@@ -221,8 +222,17 @@ exports.fetch_group_question_answer = async (req, res) => {
 }
 exports.get_test_report = async (req, res) => {
     try {
-        // --- 1️⃣ Get Total Handicap Score ---
+        const user_id = req.user._id;
+        const { session_id } = req.query;
+
+        if (!session_id) {
+            return res.status(400).json({ success: 0, message: "Session ID is required" });
+        }
+        const sessionObjectId = mongoose.isValidObjectId(session_id)
+            ? new mongoose.Types.ObjectId(session_id)
+            : session_id;
         const handicapScoreResult = await TestAttempt.aggregate([
+            { $match: { session_id: sessionObjectId } },
             {
                 $group: {
                     _id: null,
@@ -233,19 +243,12 @@ exports.get_test_report = async (req, res) => {
 
         const handicapScore = handicapScoreResult[0]?.totalScore || 0;
 
-        // --- 2️⃣ Get Average Decibel from Both Ears ---
+        // --- 2️⃣ Average Decibel (filter by session_id) ---
         const result = await MedicalTest.aggregate([
-            {
-                $project: {
-                    combinedEars: { $concatArrays: ["$left_ear", "$right_ear"] }
-                }
-            },
+            { $match: { session_id: sessionObjectId } },
+            { $project: { combinedEars: { $concatArrays: ["$left_ear", "$right_ear"] } } },
             { $unwind: "$combinedEars" },
-            {
-                $match: {
-                    "combinedEars.frequency": { $in: [500, 1000, 2000] }
-                }
-            },
+            { $match: { "combinedEars.frequency": { $in: [500, 1000, 2000] } } },
             {
                 $group: {
                     _id: null,
@@ -255,14 +258,10 @@ exports.get_test_report = async (req, res) => {
         ]);
 
         const averageDecibal = result[0]?.averageDecibal || 0;
+
+        // --- 2️⃣.1 Left / Right ear averages (filter by session_id) ---
         const separate_result = await MedicalTest.aggregate([
-            // Unwind both ears separately so we can tag them
-            {
-                $project: {
-                    left_ear: 1,
-                    right_ear: 1
-                }
-            },
+            { $match: { session_id: sessionObjectId } },
             {
                 $project: {
                     ears: {
@@ -286,11 +285,7 @@ exports.get_test_report = async (req, res) => {
                 }
             },
             { $unwind: "$ears" },
-            {
-                $match: {
-                    "ears.frequency": { $in: [500, 1000, 2000] }
-                }
-            },
+            { $match: { "ears.frequency": { $in: [500, 1000, 2000] } } },
             {
                 $group: {
                     _id: "$ears.ear",
@@ -299,23 +294,26 @@ exports.get_test_report = async (req, res) => {
             }
         ]);
 
-        const leftEar = separate_result.find(r => r._id === "left");
-        const rightEar = separate_result.find(r => r._id === "right");
-
-        const leftAvg = leftEar?.averageDecibal || 0;
-        const rightAvg = rightEar?.averageDecibal || 0;
+        const leftAvg = separate_result.find(r => r._id === "left")?.averageDecibal || 0;
+        const rightAvg = separate_result.find(r => r._id === "right")?.averageDecibal || 0;
 
         // --- 3️⃣ Determine Hearing Loss Category ---
         const getHearingLossCategory = (avgDb) => {
-            if (avgDb >= 0 && avgDb <= 55) return "Mild to Moderate";
-            if (avgDb >= 41 && avgDb <= 85) return "Moderate to Severe";
-            if (avgDb >= 41 && avgDb <= 70) return "Moderate to Moderately Severe";
-            if (avgDb >= 60 && avgDb <= 120) return "Moderately Severe to Profound";
-            return "Unknown";
+            if (avgDb >= 0 && avgDb <= 40)
+                return { degree: "Mild to Moderate", ha_style: ["RIC"], ha_style_suggestion: "RIC with dome" };
+            if (avgDb >= 41 && avgDb <= 55)
+                return { degree: "Moderate to Severe", ha_style: ["RIC"], ha_style_suggestion: "Custom RIC/RIC with mould" };
+            if (avgDb >= 56 && avgDb <= 70)
+                return { degree: "Moderate to Moderately Severe", ha_style: ["BTE"], ha_style_suggestion: "BTE with mould" };
+            if (avgDb >= 71 && avgDb <= 85)
+                return { degree: "Moderate to Severe", ha_style: ["IIC", "CIC", "ITC"], ha_style_suggestion: "IIC/CIC/ITC" };
+            if (avgDb >= 86 && avgDb <= 120)
+                return { degree: "Moderately Severe to Profound", ha_style: ["BTE"], ha_style_suggestion: "UP/SP BTE with Mould" };
+            return { degree: "Unknown", ha_style_suggestion: "Not specified" };
         };
 
         const hearingCategory = getHearingLossCategory(averageDecibal);
-        const separate_cateogry = {
+        const separate_category = {
             leftEar: {
                 averageDecibal: leftAvg,
                 category: getHearingLossCategory(leftAvg)
@@ -326,17 +324,50 @@ exports.get_test_report = async (req, res) => {
             }
         };
 
-        // --- 4️⃣ Send Response ---
+        // --- 4️⃣ Save Results in UserTest.filters[] ---
+        let userTest = await UserTest.findOne({ user: user_id, session_id });
+
+        const filtersToSave = [
+            { key_name: "degree", key_value: hearingCategory.degree },
+            { key_name: "ha_style", key_value: hearingCategory.ha_style },
+            { key_name: "ha_style_suggestion", key_value: hearingCategory.ha_style_suggestion },
+            { key_name: "average_decibel", key_value: averageDecibal },
+            { key_name: "handicap_score", key_value: handicapScore }
+        ];
+
+        if (!userTest) {
+            userTest = new UserTest({
+                user: user_id,
+                session_id,
+                filters: filtersToSave
+            });
+        } else {
+            for (const filter of filtersToSave) {
+                const idx = userTest.filters.findIndex(f => f.key_name === filter.key_name);
+                if (idx > -1) {
+                    userTest.filters[idx].key_value = filter.key_value;
+                } else {
+                    userTest.filters.push(filter);
+                }
+            }
+        }
+
+        await userTest.save();
+
+        // --- 5️⃣ Response ---
         res.status(200).json({
             success: 1,
             data: {
                 handicapScore,
                 averageDecibal,
                 hearingCategory,
-                separate_cateogry
+                separate_category,
+                savedFilters: userTest.filters
             }
         });
+
     } catch (err) {
+        console.error("Error in get_test_report:", err);
         res.status(500).json({
             success: 0,
             message: err.message
@@ -348,6 +379,40 @@ exports.start_test = async (req, res) => {
         const user_id = req.user._id;
         const resp = await UserTest.create({ user: user_id });
         return res.json({ success: 1, message: "Start session", data: resp })
+
+    } catch (err) {
+        res.status(500).json({
+            success: 0,
+            message: err.message
+        });
+    }
+}
+exports.save_filter_selection = async (req, res) => {
+    try {
+        const user_id = req.user._id;
+        const { session_id, key_name, value } = req.body;
+        if (!key_name || value === undefined) {
+            return res.status(400).json({
+                success: 0,
+                message: "key_name and value are required",
+            });
+        }
+        let userTest = await UserTest.findOne({ user: user_id, _id: session_id });
+        if (!userTest) {
+            return res.json({ success: 0, message: "Session not found" })
+        }
+        const keyIndex = userTest.filters.findIndex(k => k.key_name === key_name);
+        if (keyIndex > -1) {
+            userTest.filters[keyIndex].key_value = value;
+        } else {
+            userTest.filters.push({ key_name, key_value: value });
+        }
+        await userTest.save();
+        res.status(200).json({
+            success: 1,
+            message: "Filter selection saved successfully",
+            data: userTest
+        });
 
     } catch (err) {
         res.status(500).json({

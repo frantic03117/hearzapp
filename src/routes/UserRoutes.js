@@ -3,7 +3,7 @@ const { verify_otp, update_profile, user_list, send_otp, store_profile, admin_lo
 const store = require("../middleware/Upload");
 const { Auth } = require("../middleware/Auth");
 const UploadFile = require("../middleware/UploadFile");
-const { save_group_question_answer, fetch_group_question_answer, get_test_report, start_test } = require("../controllers/TestAttemptController");
+const { save_group_question_answer, fetch_group_question_answer, get_test_report, start_test, save_filter_selection } = require("../controllers/TestAttemptController");
 
 const router = Router();
 router.post('/send-otp', send_otp);
@@ -18,6 +18,7 @@ router.put('/update', Auth, store.fields([
     { name: 'aadhaar_back', maxCount: 1 },
     { name: 'pan_image', maxCount: 1 }
 ]), update_profile);
+
 router.put('/update/:id', Auth, store.fields([
     { name: 'profile_image', maxCount: 1 },
     { name: 'registration_certificate', maxCount: 1 },
@@ -28,6 +29,7 @@ router.put('/update/:id', Auth, store.fields([
     { name: 'aadhaar_back', maxCount: 1 },
     { name: 'pan_image', maxCount: 1 }
 ]), update_profile);
+
 router.post('/create', store.fields([
     { name: 'profile_image', maxCount: 1 },
     { name: 'registration_certificate', maxCount: 1 },
@@ -38,6 +40,7 @@ router.post('/create', store.fields([
     { name: 'aadhaar_back', maxCount: 1 },
     { name: 'pan_image', maxCount: 1 }
 ]), store_profile);
+
 router.post('/register', Auth, store.fields([
     { name: 'profile_image', maxCount: 1 },
     { name: 'registration_certificate', maxCount: 1 },
@@ -48,6 +51,7 @@ router.post('/register', Auth, store.fields([
     { name: 'aadhaar_back', maxCount: 1 },
     { name: 'pan_image', maxCount: 1 }
 ]), store_profile);
+
 router.get('/all', Auth, user_list);
 router.get('/start-test', Auth, start_test);
 router.post('/auth', admin_login);
@@ -59,6 +63,7 @@ router.post('/group-difficulty', Auth, save_group_question_answer);
 router.get('/group-difficulty', Auth, fetch_group_question_answer);
 router.delete('/deletePrescription/:id', Auth, deletePrescription);
 router.get('/ear-medical-report', Auth, get_test_report);
+router.post('/filter-selection', Auth, save_filter_selection);
 
 
 module.exports = router;

@@ -780,8 +780,6 @@ exports.uploadPrescription = async (req, res) => {
                 message: "File is required"
             });
         }
-
-        // Build file path (depends on multer setup)
         const filePath = req.file.path;
         const udata = {
             file: filePath,
