@@ -250,13 +250,16 @@ exports.get_test_report = async (req, res) => {
         }).populate("group"); // assuming "group" ref: "LifeStyleGroup"
 
         const groupDoc = groupAttempt?.group;
-        if (!groupDoc) {
-            return res.status(400).json({ success: 0, message: "Group not found for this session" });
+        // if (!groupDoc) {
+        //     return res.status(400).json({ success: 0, message: "Group not found for this session" });
+        // }
+        let groupNumber = 0;
+        // Extract group number (from title like "GROUP 1", "GROUP 2")
+        if (groupDoc) {
+            const match = groupDoc.title?.match(/GROUP\s*[-]?\s*(\d)/i);
+            groupNumber = match ? Number(match[1]) : null;
         }
 
-        // Extract group number (from title like "GROUP 1", "GROUP 2")
-        const match = groupDoc.title?.match(/GROUP\s*[-]?\s*(\d)/i);
-        const groupNumber = match ? Number(match[1]) : null;
 
         // --- 3️⃣ Compute Average Decibel ---
         const result = await MedicalTest.aggregate([
@@ -365,7 +368,7 @@ exports.get_test_report = async (req, res) => {
             { key_name: "ha_style_suggestion", key_value: hearingCategory.ha_style_suggestion },
             { key_name: "average_decibel", key_value: averageDecibal },
             { key_name: "handicap_score", key_value: handicapScore },
-            { key_name: "lifestyle_group", key_value: groupDoc.title },
+            { key_name: "lifestyle_group", key_value: groupDoc ? groupDoc.title : "NA" },
             ...Object.entries(groupFilters).map(([key, value]) => ({
                 key_name: key,
                 key_value: value,
@@ -410,7 +413,7 @@ exports.get_test_report = async (req, res) => {
                 averageDecibal,
                 hearingCategory,
                 separate_category,
-                lifestyleGroup: groupDoc.title,
+                lifestyleGroup: groupDoc ? groupDoc.title : "NA",
                 groupFilters,
                 savedFilters: userTest.filters,
             },
