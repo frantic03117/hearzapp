@@ -510,6 +510,7 @@ exports.get_my_test_session = async (req, res) => {
             success: 1,
             message: "Allowed filters for this session",
             filters: allowedFilters,
+            f: testDoc.filters
         });
     } catch (err) {
         console.error("get_my_test_session error:", err);
