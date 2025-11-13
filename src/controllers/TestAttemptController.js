@@ -4,6 +4,7 @@ const GroupQuestionAttempts = require("../models/GroupQuestionAttempts");
 const MedicalTest = require("../models/MedicalTest");
 const UserTest = require("../models/UserTest");
 const { default: mongoose } = require("mongoose");
+const VariantKey = require("../models/VariantKey");
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
         const { session_id, test_name, question, selectedOption } = req.body;
@@ -471,3 +472,50 @@ exports.save_filter_selection = async (req, res) => {
         });
     }
 }
+
+exports.get_my_test_session = async (req, res) => {
+    try {
+        const { session_id } = req.query;
+
+        if (!session_id) {
+            return res.status(400).json({
+                success: 0,
+                message: "Session ID is required",
+            });
+        }
+
+        // 🧩 Find test session
+        const testDoc = await UserTest.findOne({ _id: session_id }).lean();
+        if (!testDoc) {
+            return res.status(404).json({
+                success: 0,
+                message: "Session not found",
+            });
+        }
+
+        // 🧩 Fetch allowed filter keys from VariantKey
+        const allowedKeys = await VariantKey.find()
+            .select("key")
+            .lean();
+
+        const allowedKeySet = new Set(allowedKeys.map((k) => k.key));
+
+        // 🧩 Filter out disallowed filters
+        const allowedFilters = (testDoc.filters || []).filter((f) =>
+            allowedKeySet.has(f.key_name)
+        );
+
+        // ✅ Return only allowed filters
+        return res.status(200).json({
+            success: 1,
+            message: "Allowed filters for this session",
+            filters: allowedFilters,
+        });
+    } catch (err) {
+        console.error("get_my_test_session error:", err);
+        res.status(500).json({
+            success: 0,
+            message: err.message,
+        });
+    }
+};

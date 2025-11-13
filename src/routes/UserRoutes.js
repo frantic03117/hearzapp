@@ -3,7 +3,7 @@ const { verify_otp, update_profile, user_list, send_otp, store_profile, admin_lo
 const store = require("../middleware/Upload");
 const { Auth } = require("../middleware/Auth");
 const UploadFile = require("../middleware/UploadFile");
-const { save_group_question_answer, fetch_group_question_answer, get_test_report, start_test, save_filter_selection } = require("../controllers/TestAttemptController");
+const { save_group_question_answer, fetch_group_question_answer, get_test_report, start_test, save_filter_selection, get_my_test_session } = require("../controllers/TestAttemptController");
 
 const router = Router();
 router.post('/send-otp', send_otp);
@@ -54,6 +54,7 @@ router.post('/register', Auth, store.fields([
 
 router.get('/all', Auth, user_list);
 router.get('/start-test', Auth, start_test);
+router.get('/get-test-session', Auth, get_my_test_session);
 router.post('/auth', admin_login);
 router.get('/', Auth, my_profile);
 router.delete('/delete/:id', Auth, delete_user);
