@@ -343,10 +343,10 @@ exports.product_suggestion_filter_question = async (req, res) => {
             }
 
             // --- 9️⃣ Save or Update UserTest ---
-            let userTest = await UserTest.findOne({ user: user_id, session_id });
+            let userTest = await UserTest.findOne({ session_id });
 
             if (!userTest) {
-                userTest = new UserTest({ user: user_id, session_id, filters: filtersToSave });
+                return res.status(404).json({ success: 0, message: "No test session found" });
             } else {
                 for (const filter of filtersToSave) {
                     const idx = userTest.filters.findIndex((f) => f.key_name === filter.key_name);
