@@ -177,7 +177,7 @@ exports.product_suggestion_filter_question = async (req, res) => {
 
         let sessionFilters = [];
         let sessionFilterKeys = [];
-
+        let userTest
         // Load session filters only if session_id is provided
         if (session_id) {
             const findsession = await UserTest.findOne({ _id: session_id }).lean();
@@ -186,6 +186,7 @@ exports.product_suggestion_filter_question = async (req, res) => {
                 sessionFilters = findsession.filters || [];
                 sessionFilterKeys = sessionFilters.map(f => f.key_name);
             }
+            userTest = findsession
         }
 
         // Fetch all questions
@@ -243,7 +244,6 @@ exports.product_suggestion_filter_question = async (req, res) => {
         let response = formattedResp;
         const wanterFilterKeys = [
             "ha_style",
-
             "connectivity",
             "noiseCancellation",
             "price_range",
@@ -258,6 +258,7 @@ exports.product_suggestion_filter_question = async (req, res) => {
             success: 1,
             message: "List of filter questions",
             data: response,
+            userTest
         });
 
     } catch (err) {
