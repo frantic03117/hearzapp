@@ -430,17 +430,24 @@ exports.product_suggestion_filter_question = async (req, res) => {
             "wind_noise"
 
         ];
-        if (session_id) {
-            response = formattedResp.filter(item => wanterFilterKeys.includes(item.key)).map(item => {
-                let obj = {
-                    ...item,
 
-                }
-                if (item.key == "price_range") {
-                    obj['question'] = "Price range"
-                }
-            })
+        if (session_id) {
+            response = formattedResp
+                .filter(item => wanterFilterKeys.includes(item.key))
+                .map(item => {
+                    let obj = {
+                        ...item
+                    };
+
+                    // Override question for price range
+                    if (item.key === "price_range") {
+                        obj.question = "Price range";
+                    }
+
+                    return obj; // ✅ RETURN OBJECT
+                });
         }
+
         return res.json({
             success: 1,
             message: "List of filter questions",
