@@ -251,12 +251,12 @@ exports.get_test_report = async (req, res) => {
         // if (!groupDoc) {
         //     return res.status(400).json({ success: 0, message: "Group not found for this session" });
         // }
-        let groupNumber = 0;
+        let groupNumber = groupDoc.media_value;
         // Extract group number (from title like "GROUP 1", "GROUP 2")
-        if (groupDoc) {
-            const match = groupDoc.title?.match(/GROUP\s*[-]?\s*(\d)/i);
-            groupNumber = match ? Number(match[1]) : null;
-        }
+        // if (groupDoc) {
+        //     const match = groupDoc.title?.match(/GROUP\s*[-]?\s*(\d)/i);
+        //     groupNumber = match ? Number(match[1]) : null;
+        // }
 
 
         // --- 3️⃣ Compute Average Decibel ---
