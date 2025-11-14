@@ -240,11 +240,24 @@ exports.product_suggestion_filter_question = async (req, res) => {
                 }
             }
         }
+        let response = formattedResp;
+        const wanterFilterKeys = [
+            "ha_style",
+            "rechargeable",
+            "connectivity",
+            "noiseCancellation",
+            "price_range",
+            "technology_level",
+            "wind_noise"
 
+        ];
+        if (session_id) {
+            response = formattedResp.filter(item => wanterFilterKeys.includes(item.key));
+        }
         return res.json({
             success: 1,
             message: "List of filter questions",
-            data: formattedResp,
+            data: response,
         });
 
     } catch (err) {
