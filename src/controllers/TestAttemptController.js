@@ -168,7 +168,7 @@ exports.save_group_question_answer = async (req, res) => {
             await GroupQuestionAttempts.findByIdAndUpdate(existingAttempt._id, { group });
             return res.status(200).json({
                 success: 1,
-                message: "Previous attempt deleted successfully"
+                message: "Previous attempt updated successfully"
             });
         } else {
             const newAttempt = await GroupQuestionAttempts.create({
