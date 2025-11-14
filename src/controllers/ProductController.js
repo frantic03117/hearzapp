@@ -303,7 +303,8 @@ exports.getProducts = async (req, res) => {
                 totalDocs,
                 totalPages,
             },
-            variantFilter
+            variantFilter,
+            fdata
         });
 
     } catch (err) {
