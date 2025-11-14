@@ -1,3 +1,5 @@
+const Query = require("../models/Query");
+
 exports.createQuery = async (req, res) => {
     try {
         const { name, mobile, city, message } = req.body;
