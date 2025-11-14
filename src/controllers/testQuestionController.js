@@ -431,7 +431,15 @@ exports.product_suggestion_filter_question = async (req, res) => {
 
         ];
         if (session_id) {
-            response = formattedResp.filter(item => wanterFilterKeys.includes(item.key));
+            response = formattedResp.filter(item => wanterFilterKeys.includes(item.key)).map(item => {
+                let obj = {
+                    ...item,
+
+                }
+                if (item.key == "price_range") {
+                    obj['question'] = "Price range"
+                }
+            })
         }
         return res.json({
             success: 1,
