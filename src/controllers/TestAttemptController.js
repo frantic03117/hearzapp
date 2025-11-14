@@ -149,9 +149,6 @@ exports.deleteAttempt = async (req, res) => {
 };
 
 exports.save_group_question_answer = async (req, res) => {
-
-
-
     try {
         const { session_id, group } = req.body;
         if (!group) {
@@ -163,12 +160,12 @@ exports.save_group_question_answer = async (req, res) => {
 
         const existingAttempt = await GroupQuestionAttempts.findOne({
             user: req.user._id,
-            group,
+
             session_id
 
         });
         if (existingAttempt) {
-            await GroupQuestionAttempts.findByIdAndDelete(existingAttempt._id);
+            await GroupQuestionAttempts.findByIdAndUpdate(existingAttempt._id, { group });
             return res.status(200).json({
                 success: 1,
                 message: "Previous attempt deleted successfully"
