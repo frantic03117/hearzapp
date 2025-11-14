@@ -4,6 +4,7 @@ const store = require("../middleware/Upload");
 const { Auth } = require("../middleware/Auth");
 const UploadFile = require("../middleware/UploadFile");
 const { save_group_question_answer, fetch_group_question_answer, get_test_report, start_test, save_filter_selection, get_my_test_session } = require("../controllers/TestAttemptController");
+const { user_sessions } = require("../controllers/testQuestionController");
 
 const router = Router();
 router.post('/send-otp', send_otp);
@@ -65,6 +66,7 @@ router.get('/group-difficulty', Auth, fetch_group_question_answer);
 router.delete('/deletePrescription/:id', Auth, deletePrescription);
 router.get('/ear-medical-report', Auth, get_test_report);
 router.post('/filter-selection', Auth, save_filter_selection);
+router.get('/sessions', Auth, user_sessions);
 
 
 module.exports = router;

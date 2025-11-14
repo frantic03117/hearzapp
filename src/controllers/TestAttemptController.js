@@ -9,7 +9,6 @@ const Setting = require("../models/Setting");
 exports.createOrUpdateAttempt = async (req, res) => {
     try {
         const { session_id, test_name, question, selectedOption } = req.body;
-        // console.log(req.user.role)
         if (!session_id) {
             return res.status(500).json({ success: 0, message: "Session is required" })
         }
@@ -18,10 +17,7 @@ exports.createOrUpdateAttempt = async (req, res) => {
             return res.status(403).json({ success: 0, message: "Unauthorized" })
         }
         if (!test_name) return res.status(400).json({ data: null, success: 0, message: "test_name is required" });
-
         if (!question) return res.status(400).json({ data: null, success: 0, message: "question is required" });
-
-        // Check question belongs to same test_name
         const q = await TestQuestion.findById(question);
         if (!q) {
             return res.status(400).json({ error: "Question not found" });
@@ -153,6 +149,9 @@ exports.deleteAttempt = async (req, res) => {
 };
 
 exports.save_group_question_answer = async (req, res) => {
+
+
+
     try {
         const { session_id, group } = req.body;
         if (!group) {
@@ -482,27 +481,20 @@ exports.get_my_test_session = async (req, res) => {
         if (!session_id) {
             return res.status(400).json({ success: 0, message: "Session ID is required" });
         }
-
-        // 🔹 Fetch test session
         const userTest = await UserTest.findOne({ _id: session_id }).lean();
         if (!userTest) {
             return res.status(404).json({ success: 0, message: "No test session found" });
         }
-
-
-        // 🔹 Fetch all Setting docs where type matches any filter key_name
         const filterKeys = userTest.filters.map(f => f.key_name);
         const relatedSettings = await Setting.find({ type: { $in: filterKeys } })
             .lean();
-
-        // ✅ Response
         return res.status(200).json({
             success: 1,
             message: "User test session with allowed filters, questions, and related settings",
-            data: relatedSettings
+            data: relatedSettings,
+            userTest
         });
     } catch (err) {
-        console.error("get_my_test_session error:", err);
         res.status(500).json({
             success: 0,
             message: err.message,

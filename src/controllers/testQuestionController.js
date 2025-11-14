@@ -1,5 +1,6 @@
 const Setting = require('../models/Setting');
 const TestQuestion = require('../models/TestQuestion');
+const UserTest = require('../models/UserTest');
 
 // CREATE
 exports.createTestQuestion = async (req, res) => {
@@ -95,31 +96,78 @@ exports.deleteTestQuestion = async (req, res) => {
 };
 exports.product_suggestion_filter_question = async (req, res) => {
     try {
+        const session_id = req.query.session_id;
+
+        let sessionFilters = [];
+        let sessionFilterKeys = [];
+
+        // Load session filters only if session_id is provided
+        if (session_id) {
+            const findsession = await UserTest.findOne({ _id: session_id }).lean();
+
+            if (findsession) {
+                sessionFilters = findsession.filters || [];
+                sessionFilterKeys = sessionFilters.map(f => f.key_name);
+            }
+        }
+
+        // Fetch all questions
         const resp = await TestQuestion.find({
             test_name: "68d27b4b8d7d13e9544f6d10"
         }).populate("option_key");
 
-        // Format response if needed
+        // Build formatted response
         const formattedResp = await Promise.all(
             resp.map(async (re) => {
-                const keyvalues = await Setting.find({ type: re.option_key?.key });
-                const options = keyvalues.map(itm => itm.media_value);
+                const key = re.option_key?.key;
+
+                // Load settings for options
+                const settingValues = key
+                    ? await Setting.find({ type: key }).lean()
+                    : [];
+
+                // Check if this question's key appears in session filters
+                let user_selected_value = null;
+
+                if (session_id && key && sessionFilterKeys.includes(key)) {
+                    user_selected_value =
+                        sessionFilters.find(f => f.key_name === key)?.key_value || null;
+                }
+
                 return {
                     question: re.question,
-                    key: re.option_key?.key,
-                    options,
-                    filter_key: keyvalues
+                    key,
+                    options: settingValues.map(v => v.media_value),
+                    user_selected_value,
+                    filter_key: settingValues
                 };
             })
         );
 
         return res.json({
             success: 1,
-            message: "List of filter question",
-
+            message: "List of filter questions",
             data: formattedResp,
         });
+
     } catch (err) {
+        console.error("product_suggestion_filter_question ERROR:", err);
+        return res.status(500).json({ success: 0, message: err.message });
+    }
+};
+
+exports.user_sessions = async (req, res) => {
+    try {
+        const userId = req.query.user_id;
+        const sessions = await UserTest.find({ user: userId });
+        return res.status(200).json({
+            success: 1,
+            message: "List of user test sessions",
+            data: sessions
+        });
+    }
+    catch (err) {
+        console.error("user_sessions ERROR:", err);
         return res.status(500).json({ success: 0, message: err.message });
     }
 };
