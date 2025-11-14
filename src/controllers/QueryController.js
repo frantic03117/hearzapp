@@ -3,9 +3,9 @@ exports.createQuery = async (req, res) => {
         const { name, mobile, city, message } = req.body;
         const newQuery = new Query({ name, mobile, city, message });
         await newQuery.save();
-        res.status(201).json({ message: "Query created successfully", query: newQuery });
+        res.status(201).json({ success: 1, message: "Query created successfully", query: newQuery });
     } catch (err) {
-        res.status(500).json({ message: "Server Error", error: err.message });
+        res.status(500).json({ success: 0, message: "Server Error", error: err.message });
     }
 };
 
