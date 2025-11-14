@@ -78,6 +78,18 @@ exports.createProduct = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+function safeJsonParse(str) {
+    try {
+        return JSON.parse(str);
+    } catch (e) {
+        try {
+            const fixed = str.replace(/'/g, '"');
+            return JSON.parse(fixed);
+        } catch (e2) {
+            return null;
+        }
+    }
+}
 
 // Get All Products
 exports.getProducts = async (req, res) => {
@@ -94,112 +106,133 @@ exports.getProducts = async (req, res) => {
             keyword
         } = req.query;
 
-        const fdata = {}; // main product filter
+        const fdata = {}; // main query
 
+
+        // ----- DIRECT PRODUCT FILTERS -----
         if (id) fdata["_id"] = id;
         if (slug) fdata["slug"] = slug;
 
-        // --------------------------------------------------------
-        // 🔍  KEYWORD SEARCH
-        // --------------------------------------------------------
+        // 🔍 Keyword Search
         if (keyword && keyword.trim() !== "") {
-            const regex = new RegExp(keyword.trim(), "i");
-
             fdata["$or"] = [
-                { title: regex },
-                { slug: regex },
-                { short_description: regex },
-                { long_description: regex },
-                { "variants.model": regex },
-                { "variants.color": regex },
-                { "variants.ha_style": regex }
+                { title: { $regex: keyword, $options: "i" } },
+                { slug: { $regex: keyword, $options: "i" } },
+                { description: { $regex: keyword, $options: "i" } }
             ];
         }
-        // --------------------------------------------------------
 
+        // ----- ALLOWED VARIANT KEYS -----
+        const allowedKeys = await VariantKey.find({ form: "Variant" })
+            .select("key")
+            .lean();
+        const allowedKeySet = new Set(allowedKeys.map(k => k.key));
 
-        // 🔹 Get allowed variant keys once
-        const allowedKeys = await VariantKey.find({ form: "Variant" }).select("key").lean();
-        const allowedKeySet = new Set(allowedKeys.map((k) => k.key));
-
-        // 🔹 Initialize variant filters
+        // ----- VARIANT FILTERS -----
         let variantFilter = {};
 
-        // --------------------------------------------------------
-        //  ✅ Manual vfilters from query
-        // --------------------------------------------------------
+        // ----- HANDLE vfilters from query -----
         if (vfilters) {
-            try {
-                const parsedFilters = JSON.parse(vfilters);
+            const parsedFilters = safeJsonParse(vfilters);
 
-                Object.keys(parsedFilters).forEach((key) => {
-                    if (!allowedKeySet.has(key)) return;
-
-                    const value = parsedFilters[key];
-
-                    // 🔹 price_range = "15000-30000"
-                    if (key === "price_range") {
-                        if (typeof value === "string") {
-                            const [minStr, maxStr] = value.split("-");
-                            const min = parseInt(minStr.trim());
-                            const max = parseInt(maxStr.trim());
-
-                            if (!isNaN(min) && !isNaN(max)) {
-                                variantFilter.price = { $gte: min, $lte: max };
-                            }
-                        }
-                        return;
-                    }
-
-                    // Array → $in
-                    if (Array.isArray(value)) {
-                        variantFilter[key] = { $in: value };
-                        return;
-                    }
-
-                    // CSV → $in
-                    if (typeof value === "string" && value.includes(",")) {
-                        variantFilter[key] = {
-                            $in: value.split(",").map((v) => v.trim())
-                        };
-                        return;
-                    }
-
-                    variantFilter[key] = value;
-                });
-
-            } catch (e) {
+            if (!parsedFilters) {
                 return res.status(400).json({
                     success: 0,
                     message: "Invalid vfilters format, must be valid JSON",
                 });
             }
+
+            console.log("Parsed vfilters:", parsedFilters);
+
+            Object.keys(parsedFilters).forEach((key) => {
+                if (!allowedKeySet.has(key)) return;
+
+                const value = parsedFilters[key];
+
+                // PRICE RANGE
+                if (key === "price_range" && typeof value === "string") {
+                    const [minStr, maxStr] = value.split("-");
+                    const min = parseInt(minStr.trim());
+                    const max = parseInt(maxStr.trim());
+
+                    if (!isNaN(min) && !isNaN(max)) {
+                        variantFilter.price = { $gte: min, $lte: max };
+                    }
+                    return;
+                }
+
+                // ARRAY
+                if (Array.isArray(value)) {
+                    variantFilter[key] = { $in: value };
+                    return;
+                }
+
+                // CSV → array
+                if (typeof value === "string" && value.includes(",")) {
+                    variantFilter[key] = {
+                        $in: value.split(",").map(v => v.trim())
+                    };
+                    return;
+                }
+
+                variantFilter[key] = value;
+            });
+            if (parsedFilters.price_range) {
+
+                let ranges = parsedFilters.price_range;
+
+                // Case 1: comma-separated string → convert to array
+                if (typeof ranges === "string" && ranges.includes(",")) {
+                    ranges = ranges.split(",").map(r => r.trim());
+                }
+
+                // Case 2: single string → convert to array of one item
+                if (typeof ranges === "string") {
+                    ranges = [ranges];
+                }
+
+                // Now ranges is ALWAYS an array
+                let orConditions = [];
+
+                ranges.forEach(range => {
+                    if (!range.includes("-")) return; // skip invalid
+
+                    const [minStr, maxStr] = range.split("-");
+                    const min = parseInt(minStr.trim());
+                    const max = parseInt(maxStr.trim());
+
+                    if (!isNaN(min) && !isNaN(max)) {
+                        orConditions.push({ price: { $gte: min, $lte: max } });
+                    }
+                });
+
+                // Apply OR condition only if at least one valid range
+                if (orConditions.length > 0) {
+                    variantFilter.$or = orConditions;
+                }
+            }
+
         }
 
-        // --------------------------------------------------------
-        //  ✅ Manual Price Filter
-        // --------------------------------------------------------
+
+        // ----- ADDITIONAL PRICE FILTER -----
         if (price_min || price_max) {
             variantFilter.price = {};
             if (price_min) variantFilter.price.$gte = Number(price_min);
             if (price_max) variantFilter.price.$lte = Number(price_max);
         }
 
-        // --------------------------------------------------------
-        //  ✅ Filters From Test Session
-        // --------------------------------------------------------
+
+        // ----- SESSION FILTERS -----
         if (session_id) {
-            const sessionObjectId = mongoose.isValidObjectId(session_id)
-                ? new mongoose.Types.ObjectId(session_id)
-                : session_id;
+            const session = await UserTest.findOne({ _id: session_id }).lean();
 
-            const userTest = await UserTest.findOne({ _id: sessionObjectId }).lean();
-
-            if (userTest && Array.isArray(userTest.filters)) {
-                userTest.filters.forEach((f) => {
+            if (session && Array.isArray(session.filters)) {
+                session.filters.forEach((f) => {
                     if (!f.key_name || !f.key_value) return;
                     if (!allowedKeySet.has(f.key_name)) return;
 
+                    // SESSION price_range
                     if (f.key_name === "price_range" && typeof f.key_value === "string") {
                         const [minStr, maxStr] = f.key_value.split("-");
                         const min = parseInt(minStr.trim());
@@ -208,7 +241,10 @@ exports.getProducts = async (req, res) => {
                         if (!isNaN(min) && !isNaN(max)) {
                             variantFilter.price = { $gte: min, $lte: max };
                         }
-                    } else if (Array.isArray(f.key_value)) {
+                        return;
+                    }
+
+                    if (Array.isArray(f.key_value)) {
                         variantFilter[f.key_name] = { $in: f.key_value };
                     } else {
                         variantFilter[f.key_name] = f.key_value;
@@ -217,20 +253,20 @@ exports.getProducts = async (req, res) => {
             }
         }
 
-        // --------------------------------------------------------
-        //  🔹 Apply variant filter
-        // --------------------------------------------------------
+
+        // ----- APPLY VARIANT FILTER -----
         if (Object.keys(variantFilter).length > 0) {
             fdata["variants"] = { $elemMatch: variantFilter };
         }
 
-        // --------------------------------------------------------
-        //  🔹 Pagination + Fetch
-        // --------------------------------------------------------
+
+        // ----- PAGINATION -----
         const totalDocs = await Product.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
 
+
+        // ----- FETCH PRODUCTS -----
         const products = await Product.find(fdata)
             .populate("category")
             .sort({ createdAt: -1 })
@@ -238,9 +274,8 @@ exports.getProducts = async (req, res) => {
             .limit(perPage)
             .lean();
 
-        // --------------------------------------------------------
-        //  ❤️ Wishlist marking
-        // --------------------------------------------------------
+
+        // ----- ADD WISHLIST FLAG -----
         let productsWithWishlist = products;
 
         if (req.user) {
@@ -249,14 +284,16 @@ exports.getProducts = async (req, res) => {
                 cart_status: "Wishlist",
             });
 
-            const wishpids = wishlisted.map((itm) => itm.product.toString());
+            const wishIds = wishlisted.map((w) => w.product.toString());
 
-            productsWithWishlist = products.map((product) => ({
-                ...product,
-                is_wishlist: wishpids.includes(product._id.toString()),
+            productsWithWishlist = products.map((prod) => ({
+                ...prod,
+                is_wishlist: wishIds.includes(prod._id.toString())
             }));
         }
 
+
+        // ----- RESPONSE -----
         return res.status(200).json({
             success: 1,
             message: "List of products",
@@ -264,15 +301,18 @@ exports.getProducts = async (req, res) => {
             pagination: {
                 page: Number(page),
                 perPage: Number(perPage),
-                totalPages,
                 totalDocs,
+                totalPages,
             },
             variantFilter
         });
 
     } catch (err) {
         console.error("getProducts error:", err);
-        res.status(500).json({ success: 0, error: err.message });
+        return res.status(500).json({
+            success: 0,
+            error: err.message
+        });
     }
 };
 
