@@ -1,4 +1,8 @@
+const { default: mongoose } = require('mongoose');
+const GroupQuestionAttempts = require('../models/GroupQuestionAttempts');
+const MedicalTest = require('../models/MedicalTest');
 const Setting = require('../models/Setting');
+const TestAttempt = require('../models/TestAttempt');
 const TestQuestion = require('../models/TestQuestion');
 const UserTest = require('../models/UserTest');
 
@@ -180,6 +184,184 @@ exports.product_suggestion_filter_question = async (req, res) => {
         let userTest
         // Load session filters only if session_id is provided
         if (session_id) {
+            if (!session_id) {
+                return res.status(400).json({ success: 0, message: "session_id is required" });
+            }
+
+            const sessionObjectId = mongoose.isValidObjectId(session_id)
+                ? new mongoose.Types.ObjectId(session_id)
+                : session_id;
+
+            // --- 1️⃣ Handicap Score ---
+            const handicapScoreResult = await TestAttempt.aggregate([
+                { $match: { session_id: sessionObjectId } },
+                { $group: { _id: null, totalScore: { $sum: "$score" } } },
+            ]);
+            const handicapScore = handicapScoreResult[0]?.totalScore || 0;
+
+            // --- 2️⃣ Get Group (with populated LifestyleGroup info) ---
+            const groupAttempt = await GroupQuestionAttempts.findOne({
+                session_id,
+            }).populate("group"); // assuming "group" ref: "LifeStyleGroup"
+
+            const groupDoc = groupAttempt?.group;
+            // if (!groupDoc) {
+            //     return res.status(400).json({ success: 0, message: "Group not found for this session" });
+            // }
+            let groupNumber = 0;
+            // Extract group number (from title like "GROUP 1", "GROUP 2")
+            if (groupDoc) {
+                const match = groupDoc.title?.match(/GROUP\s*[-]?\s*(\d)/i);
+                groupNumber = match ? Number(match[1]) : null;
+            }
+
+
+            // --- 3️⃣ Compute Average Decibel ---
+            const result = await MedicalTest.aggregate([
+                { $match: { session_id: sessionObjectId } },
+                { $project: { combinedEars: { $concatArrays: ["$left_ear", "$right_ear"] } } },
+                { $unwind: "$combinedEars" },
+                { $match: { "combinedEars.frequency": { $in: [500, 1000, 2000] } } },
+                { $group: { _id: null, averageDecibal: { $avg: "$combinedEars.decibal" } } },
+            ]);
+            const averageDecibal = result[0]?.averageDecibal || 0;
+
+            // --- 4️⃣ Compute Left & Right Ear Separately ---
+            const separate_result = await MedicalTest.aggregate([
+                { $match: { session_id: sessionObjectId } },
+                {
+                    $project: {
+                        ears: {
+                            $concatArrays: [
+                                {
+                                    $map: {
+                                        input: "$left_ear",
+                                        as: "e",
+                                        in: { ear: "left", frequency: "$$e.frequency", decibal: "$$e.decibal" },
+                                    },
+                                },
+                                {
+                                    $map: {
+                                        input: "$right_ear",
+                                        as: "e",
+                                        in: { ear: "right", frequency: "$$e.frequency", decibal: "$$e.decibal" },
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                },
+                { $unwind: "$ears" },
+                { $match: { "ears.frequency": { $in: [500, 1000, 2000] } } },
+                {
+                    $group: { _id: "$ears.ear", averageDecibal: { $avg: "$ears.decibal" } },
+                },
+            ]);
+
+            const leftAvg = separate_result.find((r) => r._id === "left")?.averageDecibal || 0;
+            const rightAvg = separate_result.find((r) => r._id === "right")?.averageDecibal || 0;
+
+            // --- 5️⃣ Determine Hearing Category ---
+            const getHearingLossCategory = (avgDb) => {
+                if (avgDb >= 0 && avgDb <= 40)
+                    return { degree: "Mild to Moderate", ha_style: ["RIC"], ha_style_suggestion: "RIC with dome" };
+                if (avgDb >= 41 && avgDb <= 55)
+                    return { degree: "Moderate to Severe", ha_style: ["RIC"], ha_style_suggestion: "Custom RIC/RIC with mould" };
+                if (avgDb >= 56 && avgDb <= 70)
+                    return { degree: "Moderate to Moderately Severe", ha_style: ["BTE"], ha_style_suggestion: "BTE with mould" };
+                if (avgDb >= 71 && avgDb <= 85)
+                    return { degree: "Moderate to Severe", ha_style: ["IIC", "CIC", "ITC"], ha_style_suggestion: "IIC/CIC/ITC" };
+                if (avgDb >= 86 && avgDb <= 120)
+                    return { degree: "Moderately Severe to Profound", ha_style: ["BTE"], ha_style_suggestion: "UP/SP BTE with mould" };
+                return { degree: "Unknown", ha_style_suggestion: "Not specified" };
+            };
+
+            const hearingCategory = getHearingLossCategory(averageDecibal);
+            const separate_category = {
+                leftEar: { averageDecibal: leftAvg, category: getHearingLossCategory(leftAvg) },
+                rightEar: { averageDecibal: rightAvg, category: getHearingLossCategory(rightAvg) },
+            };
+
+            // --- 6️⃣ Lifestyle Group → Filters Map ---
+            const groupFiltersMap = {
+                1: {
+                    technology_level: "Basic",
+                    noiseCancellation: "Minimal",
+                    price_range: "15000-70000",
+                    wind_noise: "Minimal",
+                    soft_hear_prescription: "Models",
+                },
+                2: {
+                    technology_level: "Advance",
+                    noiseCancellation: "Basic",
+                    price_range: "71000-150000",
+                    wind_noise: "Basic",
+                    soft_hear_prescription: "Features",
+                },
+                3: {
+                    technology_level: "Premium",
+                    noiseCancellation: "Medium",
+                    price_range: "151000-260000",
+                    wind_noise: "Medium",
+                    soft_hear_prescription: "Companies and warranty",
+                },
+                4: {
+                    technology_level: "World's Best",
+                    noiseCancellation: "Strong",
+                    price_range: "261000-450000",
+                    wind_noise: "Strong",
+                    soft_hear_prescription: "Pictures",
+                },
+            };
+
+            const groupFilters = groupNumber ? groupFiltersMap[groupNumber] || {} : {};
+
+            // --- 7️⃣ Build Filter Array ---
+            const filtersToSave = [
+                { key_name: "degree", key_value: hearingCategory.degree },
+                { key_name: "ha_style", key_value: hearingCategory.ha_style },
+                { key_name: "ha_style_suggestion", key_value: hearingCategory.ha_style_suggestion },
+                { key_name: "average_decibel", key_value: averageDecibal },
+                { key_name: "handicap_score", key_value: handicapScore },
+                { key_name: "lifestyle_group", key_value: groupDoc ? groupDoc.title : "NA" },
+                ...Object.entries(groupFilters).map(([key, value]) => ({
+                    key_name: key,
+                    key_value: value,
+                })),
+            ];
+
+            // --- 8️⃣ Add min_price / max_price from price_range ---
+            const priceFilter = filtersToSave.find((f) => f.key_name === "price_range");
+            if (priceFilter && typeof priceFilter.key_value === "string" && priceFilter.key_value.includes("-")) {
+                const [minStr, maxStr] = priceFilter.key_value.split("-");
+                const min = parseInt(minStr.trim());
+                const max = parseInt(maxStr.trim());
+                if (!isNaN(min) && !isNaN(max)) {
+                    filtersToSave.push({ key_name: "min_price", key_value: min });
+                    filtersToSave.push({ key_name: "max_price", key_value: max });
+                }
+            }
+
+            // --- 9️⃣ Save or Update UserTest ---
+            let userTest = await UserTest.findOne({ user: user_id, session_id });
+
+            if (!userTest) {
+                userTest = new UserTest({ user: user_id, session_id, filters: filtersToSave });
+            } else {
+                for (const filter of filtersToSave) {
+                    const idx = userTest.filters.findIndex((f) => f.key_name === filter.key_name);
+                    if (idx > -1) {
+                        userTest.filters[idx].key_value = filter.key_value;
+                    } else {
+                        userTest.filters.push(filter);
+                    }
+                }
+            }
+
+            await userTest.save();
+
+
+
             const findsession = await UserTest.findOne({ _id: session_id }).lean();
 
             if (findsession) {
