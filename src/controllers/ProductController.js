@@ -232,25 +232,24 @@ exports.getProducts = async (req, res) => {
                     if (!f.key_name || !f.key_value) return;
                     if (!allowedKeySet.has(f.key_name)) return;
 
-                    // SESSION price_range
-                    if (f.key_name === "price_range" && typeof f.key_value === "string") {
-                        const [minStr, maxStr] = f.key_value.split("-");
-                        const min = parseInt(minStr.trim());
-                        const max = parseInt(maxStr.trim());
+                    let value = f.key_value;
 
-                        if (!isNaN(min) && !isNaN(max)) {
-                            variantFilter.price = { $gte: min, $lte: max };
-                        }
+                    // 🔹 Case 1: value is comma-separated string → convert to array
+                    if (typeof value === "string" && value.includes(",")) {
+                        value = value.split(",").map(v => v.trim());
+                    }
+
+                    // 🔹 Case 2: array → use $in
+                    if (Array.isArray(value)) {
+                        variantFilter[f.key_name] = { $in: value };
                         return;
                     }
 
-                    if (Array.isArray(f.key_value)) {
-                        variantFilter[f.key_name] = { $in: f.key_value };
-                    } else {
-                        variantFilter[f.key_name] = f.key_value;
-                    }
+                    // 🔹 Case 3: normal string → direct match
+                    variantFilter[f.key_name] = value;
                 });
             }
+
         }
 
 
