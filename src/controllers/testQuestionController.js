@@ -277,10 +277,7 @@ exports.product_suggestion_filter_question = async (req, res) => {
             };
 
             const hearingCategory = getHearingLossCategory(averageDecibal);
-            const separate_category = {
-                leftEar: { averageDecibal: leftAvg, category: getHearingLossCategory(leftAvg) },
-                rightEar: { averageDecibal: rightAvg, category: getHearingLossCategory(rightAvg) },
-            };
+
 
             // --- 6️⃣ Lifestyle Group → Filters Map ---
             const groupFiltersMap = {
@@ -343,7 +340,7 @@ exports.product_suggestion_filter_question = async (req, res) => {
             }
 
             // --- 9️⃣ Save or Update UserTest ---
-            let userTest = await UserTest.findOne({ _id: session_id });
+            userTest = await UserTest.findOne({ _id: session_id });
 
             if (!userTest) {
                 return res.status(404).json({ success: 0, message: "No test session found" });
