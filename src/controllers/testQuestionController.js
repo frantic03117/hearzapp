@@ -343,7 +343,7 @@ exports.product_suggestion_filter_question = async (req, res) => {
             }
 
             // --- 9️⃣ Save or Update UserTest ---
-            let userTest = await UserTest.findOne({ session_id });
+            let userTest = await UserTest.findOne({ _id: session_id });
 
             if (!userTest) {
                 return res.status(404).json({ success: 0, message: "No test session found" });
