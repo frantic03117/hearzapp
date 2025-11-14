@@ -423,7 +423,7 @@ exports.product_suggestion_filter_question = async (req, res) => {
         let response = formattedResp;
         const wanterFilterKeys = [
             "ha_style",
-            "connectivity",
+
             "noiseCancellation",
             "price_range",
             "technology_level",
