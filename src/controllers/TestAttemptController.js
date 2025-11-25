@@ -248,10 +248,11 @@ exports.get_test_report = async (req, res) => {
         }).populate("group"); // assuming "group" ref: "LifeStyleGroup"
 
         const groupDoc = groupAttempt?.group;
+        console.log(groupAttempt)
         // if (!groupDoc) {
         //     return res.status(400).json({ success: 0, message: "Group not found for this session" });
         // }
-        let groupNumber = groupDoc.media_value;
+        let groupNumber = groupDoc?.media_value;
         // Extract group number (from title like "GROUP 1", "GROUP 2")
         // if (groupDoc) {
         //     const match = groupDoc.title?.match(/GROUP\s*[-]?\s*(\d)/i);
