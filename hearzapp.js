@@ -19,7 +19,7 @@ const options = {
 // ssl
 const server = https.createServer(options, app);
 process.env.TZ = "Asia/Kolkata";
-const mongourl = "mongodb+srv://noreplycabs24:KkhHGcKLcnzppeLk@cluster0.at7dp.mongodb.net/hearzapp";
+const mongourl = "mongodb+srv://franticnoida2016:franticnoida2016@cluster0.9n1kpyn.mongodb.net/softhear";
 mongoose.connect(mongourl);
 const database = mongoose.connection;
 database.on('error', (error) => {
@@ -97,7 +97,7 @@ app.use('/api/v1/suggestion', suggestRoute);
 app.use('/api/v1/query', queryRoute);
 
 
-app.get('/', (req, res) => res.send('Hearzapp  Started'))
+app.get('/', (req, res) => res.send('Soft hear  Started'))
 // app.listen(port, () => console.log(`Rephrase app listening on port ${port}! http://localhost:7887/`))
 server.listen(port, () => {
     console.log(`Server running at https://localhost:${port}`);

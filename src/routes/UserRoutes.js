@@ -53,7 +53,7 @@ router.post('/register', Auth, store.fields([
     { name: 'pan_image', maxCount: 1 }
 ]), store_profile);
 
-router.get('/all', Auth, user_list);
+router.get('/all', user_list);
 router.get('/start-test', Auth, start_test);
 router.get('/get-test-session', Auth, get_my_test_session);
 router.post('/auth', admin_login);

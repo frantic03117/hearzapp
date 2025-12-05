@@ -48,6 +48,5 @@ const schema = new Schema({
     brand: { type: String },
     tags: [String],
     isActive: { type: Boolean, default: true },
-
 }, { timestamps: true });
 module.exports = new model('Product', schema);

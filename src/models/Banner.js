@@ -14,6 +14,9 @@ const schema = new Schema({
     heading: {
         type: String
     },
+    url: {
+        type: String
+    },
     short_description: {
         type: String
     }
