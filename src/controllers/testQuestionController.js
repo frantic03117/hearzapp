@@ -258,8 +258,6 @@ exports.product_suggestion_filter_question = async (req, res) => {
                 },
             ]);
 
-            const leftAvg = separate_result.find((r) => r._id === "left")?.averageDecibal || 0;
-            const rightAvg = separate_result.find((r) => r._id === "right")?.averageDecibal || 0;
 
             // --- 5️⃣ Determine Hearing Category ---
             const getHearingLossCategory = (avgDb) => {
@@ -442,6 +440,12 @@ exports.product_suggestion_filter_question = async (req, res) => {
                     // Override question for price range
                     if (item.key === "price_range") {
                         obj.question = "Price range";
+                    }
+                    if (item.key === "ha_style") {
+                        obj.question = "Hearing Aid Style";
+                    }
+                    if (item.key === "noiseCancellation") {
+                        obj.question = "Noise Cancellation";
                     }
 
                     return obj; // ✅ RETURN OBJECT
