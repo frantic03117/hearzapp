@@ -226,38 +226,6 @@ exports.product_suggestion_filter_question = async (req, res) => {
             ]);
             const averageDecibal = result[0]?.averageDecibal || 0;
 
-            // --- 4️⃣ Compute Left & Right Ear Separately ---
-            const separate_result = await MedicalTest.aggregate([
-                { $match: { session_id: sessionObjectId } },
-                {
-                    $project: {
-                        ears: {
-                            $concatArrays: [
-                                {
-                                    $map: {
-                                        input: "$left_ear",
-                                        as: "e",
-                                        in: { ear: "left", frequency: "$$e.frequency", decibal: "$$e.decibal" },
-                                    },
-                                },
-                                {
-                                    $map: {
-                                        input: "$right_ear",
-                                        as: "e",
-                                        in: { ear: "right", frequency: "$$e.frequency", decibal: "$$e.decibal" },
-                                    },
-                                },
-                            ],
-                        },
-                    },
-                },
-                { $unwind: "$ears" },
-                { $match: { "ears.frequency": { $in: [500, 1000, 2000] } } },
-                {
-                    $group: { _id: "$ears.ear", averageDecibal: { $avg: "$ears.decibal" } },
-                },
-            ]);
-
 
             // --- 5️⃣ Determine Hearing Category ---
             const getHearingLossCategory = (avgDb) => {
