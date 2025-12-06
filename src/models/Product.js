@@ -4,7 +4,8 @@ const variantSchema = new Schema({
     color: { type: String },   // e.g., Black, White
     ha_style: {
         type: String
-    },            // e.g.,BTE, RIC, CIC, IIC
+    },
+    brand: String,          // e.g.,BTE, RIC, CIC, IIC
     connectivity: { type: String },            // e.g., Wired, Bluetooth 5.2
     rechargeable: { type: String },             // e.g., "8 hours", "30 hours with case"
     batteryLife: { type: String },             // e.g., "8 hours", "30 hours with case"
