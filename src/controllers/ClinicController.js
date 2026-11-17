@@ -150,12 +150,12 @@ exports.get_clinics = async (req, res) => {
             findcategory = findsetting.map(itm => itm._id);
             fdata['category'] = { $in: findsetting.map(itm => itm._id) };
         }
-        if (state) {
-            fdata['state'] = state
-        }
-        if (city) {
-            fdata['city'] = { $in: city.split(',') }
-        }
+        // if (state) {
+        //     fdata['state'] = state
+        // }
+        // if (city) {
+        //     fdata['city'] = { $in: city.split(',') }
+        // }
         if (for_booking) {
             const doctors = await User.find({ category: { $in: category.split(',') }, role: "Doctor" });
             fdata['_id'] = { $in: doctors.map(itm => itm.clinic) }
